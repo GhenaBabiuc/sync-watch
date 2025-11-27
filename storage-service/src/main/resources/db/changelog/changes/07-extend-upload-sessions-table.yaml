@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 07-extend-upload-sessions-table
+      author: gbabiuc
+      changes:
+        - addColumn:
+            tableName: upload_sessions
+            columns:
+              - column:
+                  name: series_id
+                  type: bigint
+              - column:
+                  name: season_id
+                  type: bigint
+              - column:
+                  name: season_number
+                  type: integer
+              - column:
+                  name: episode_number
+                  type: integer
+              - column:
+                  name: entity_type
+                  type: varchar(20)
+              - column:
+                  name: entity_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: upload_sessions
+            baseColumnNames: series_id
+            constraintName: fk_upload_sessions_series
+            referencedTableName: series
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: upload_sessions
+            baseColumnNames: season_id
+            constraintName: fk_upload_sessions_season
+            referencedTableName: seasons
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_series_id
+            columns:
+              - column:
+                  name: series_id
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_season_id
+            columns:
+              - column:
+                  name: season_id
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_entity_type_id
+            columns:
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id

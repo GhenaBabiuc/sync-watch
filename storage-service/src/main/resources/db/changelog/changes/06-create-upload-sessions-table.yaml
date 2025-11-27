@@ -1,0 +1,111 @@
+databaseChangeLog:
+  - changeSet:
+      id: 06-create-upload-sessions-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: upload_sessions
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: upload_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: object_key
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: varchar(100)
+              - column:
+                  name: file_size
+                  type: bigint
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: multipart_upload_id
+                  type: varchar(255)
+              - column:
+                  name: created_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_date
+                  type: timestamp
+              - column:
+                  name: error_message
+                  type: text
+              - column:
+                  name: title
+                  type: varchar(255)
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: genre
+                  type: varchar(100)
+              - column:
+                  name: release_year
+                  type: integer
+              - column:
+                  name: rating
+                  type: decimal(3,1)
+              - column:
+                  name: poster_path
+                  type: varchar(500)
+              - column:
+                  name: thumbnail_path
+                  type: varchar(500)
+              - column:
+                  name: expires_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_upload_id
+            columns:
+              - column:
+                  name: upload_id
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_expires_at
+            columns:
+              - column:
+                  name: expires_at
+        - createIndex:
+            tableName: upload_sessions
+            indexName: idx_upload_sessions_created_date
+            columns:
+              - column:
+                  name: created_date

@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 05-update-movies-table
+      author: gbabiuc
+      changes:
+        - addColumn:
+            tableName: movies
+            columns:
+              - column:
+                  name: poster_path
+                  type: varchar(500)
+              - column:
+                  name: rating
+                  type: decimal(3,1)
+              - column:
+                  name: runtime_text
+                  type: varchar(50)
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_rating
+            columns:
+              - column:
+                  name: rating

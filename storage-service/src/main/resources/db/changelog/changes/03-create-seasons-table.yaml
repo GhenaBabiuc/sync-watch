@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: 03-create-seasons-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: seasons
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: season_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: release_year
+                  type: integer
+              - column:
+                  name: poster_path
+                  type: varchar(500)
+              - column:
+                  name: created_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: series_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: seasons
+            baseColumnNames: series_id
+            constraintName: fk_seasons_series
+            referencedTableName: series
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: seasons
+            columnNames: series_id, season_number
+            constraintName: uk_seasons_series_season_number
+        - createIndex:
+            tableName: seasons
+            indexName: idx_seasons_series_id
+            columns:
+              - column:
+                  name: series_id
+        - createIndex:
+            tableName: seasons
+            indexName: idx_seasons_season_number
+            columns:
+              - column:
+                  name: season_number

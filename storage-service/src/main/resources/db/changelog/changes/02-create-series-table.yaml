@@ -1,0 +1,70 @@
+databaseChangeLog:
+  - changeSet:
+      id: 02-create-series-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: series
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: genre
+                  type: varchar(100)
+              - column:
+                  name: release_year
+                  type: integer
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: 'UPCOMING'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: poster_path
+                  type: varchar(500)
+              - column:
+                  name: created_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_date
+                  type: timestamp
+        - createIndex:
+            tableName: series
+            indexName: idx_series_title
+            columns:
+              - column:
+                  name: title
+        - createIndex:
+            tableName: series
+            indexName: idx_series_genre
+            columns:
+              - column:
+                  name: genre
+        - createIndex:
+            tableName: series
+            indexName: idx_series_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: series
+            indexName: idx_series_created_date
+            columns:
+              - column:
+                  name: created_date

@@ -1,0 +1,484 @@
+databaseChangeLog:
+  - changeSet:
+      id: 08-drop-old-tables
+      author: gbabiuc
+      changes:
+        - dropTable:
+            tableName: upload_sessions
+            cascadeConstraints: true
+        - dropTable:
+            tableName: episodes
+            cascadeConstraints: true
+        - dropTable:
+            tableName: seasons
+            cascadeConstraints: true
+        - dropTable:
+            tableName: series
+            cascadeConstraints: true
+        - dropTable:
+            tableName: movies
+            cascadeConstraints: true
+
+  - changeSet:
+      id: 08-create-new-movies-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: movies
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: year
+                  type: integer
+              - column:
+                  name: duration
+                  type: integer
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_title
+            columns:
+              - column:
+                  name: title
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_year
+            columns:
+              - column:
+                  name: year
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_created_at
+            columns:
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: 08-create-new-series-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: series
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: year
+                  type: integer
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: series
+            indexName: idx_series_title
+            columns:
+              - column:
+                  name: title
+        - createIndex:
+            tableName: series
+            indexName: idx_series_year
+            columns:
+              - column:
+                  name: year
+        - createIndex:
+            tableName: series
+            indexName: idx_series_created_at
+            columns:
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: 08-create-new-seasons-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: seasons
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: series_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: season_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: seasons
+            baseColumnNames: series_id
+            constraintName: fk_seasons_series
+            referencedTableName: series
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: seasons
+            columnNames: series_id, season_number
+            constraintName: unique_series_season
+        - createIndex:
+            tableName: seasons
+            indexName: idx_seasons_series_id
+            columns:
+              - column:
+                  name: series_id
+
+  - changeSet:
+      id: 08-create-new-episodes-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: episodes
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: season_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: episode_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: duration
+                  type: integer
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: episodes
+            baseColumnNames: season_id
+            constraintName: fk_episodes_seasons
+            referencedTableName: seasons
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: episodes
+            columnNames: season_id, episode_number
+            constraintName: unique_season_episode
+        - createIndex:
+            tableName: episodes
+            indexName: idx_episodes_season_id
+            columns:
+              - column:
+                  name: season_id
+        - createIndex:
+            tableName: episodes
+            indexName: idx_episodes_episode_number
+            columns:
+              - column:
+                  name: episode_number
+
+  - changeSet:
+      id: 08-create-movie-files-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: movie_files
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: movie_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+              - column:
+                  name: minio_bucket
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: minio_object_key
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_size
+                  type: bigint
+              - column:
+                  name: mime_type
+                  type: varchar(100)
+              - column:
+                  name: upload_status
+                  type: varchar(20)
+                  defaultValue: 'pending'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_session_id
+                  type: varchar(100)
+              - column:
+                  name: presigned_url
+                  type: text
+              - column:
+                  name: presigned_expires_at
+                  type: timestamp
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: movie_files
+            baseColumnNames: movie_id
+            constraintName: fk_movie_files_movies
+            referencedTableName: movies
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: movie_files
+            columnNames: minio_bucket, minio_object_key
+            constraintName: unique_minio_object_movies
+        - addUniqueConstraint:
+            tableName: movie_files
+            columnNames: movie_id, file_type
+            constraintName: unique_movie_file_type
+        - createIndex:
+            tableName: movie_files
+            indexName: idx_movie_files_movie_id
+            columns:
+              - column:
+                  name: movie_id
+        - createIndex:
+            tableName: movie_files
+            indexName: idx_movie_files_file_type
+            columns:
+              - column:
+                  name: file_type
+        - createIndex:
+            tableName: movie_files
+            indexName: idx_movie_files_upload_status
+            columns:
+              - column:
+                  name: upload_status
+        - createIndex:
+            tableName: movie_files
+            indexName: idx_movie_files_upload_session_id
+            columns:
+              - column:
+                  name: upload_session_id
+        - createIndex:
+            tableName: movie_files
+            indexName: idx_movie_files_presigned_expires_at
+            columns:
+              - column:
+                  name: presigned_expires_at
+
+  - changeSet:
+      id: 08-create-episode-files-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: episode_files
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: episode_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+              - column:
+                  name: minio_bucket
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: minio_object_key
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_size
+                  type: bigint
+              - column:
+                  name: mime_type
+                  type: varchar(100)
+              - column:
+                  name: upload_status
+                  type: varchar(20)
+                  defaultValue: 'pending'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_session_id
+                  type: varchar(100)
+              - column:
+                  name: presigned_url
+                  type: text
+              - column:
+                  name: presigned_expires_at
+                  type: timestamp
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: episode_files
+            baseColumnNames: episode_id
+            constraintName: fk_episode_files_episodes
+            referencedTableName: episodes
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: episode_files
+            columnNames: minio_bucket, minio_object_key
+            constraintName: unique_minio_object_episodes
+        - addUniqueConstraint:
+            tableName: episode_files
+            columnNames: episode_id, file_type
+            constraintName: unique_episode_file_type
+        - createIndex:
+            tableName: episode_files
+            indexName: idx_episode_files_episode_id
+            columns:
+              - column:
+                  name: episode_id
+        - createIndex:
+            tableName: episode_files
+            indexName: idx_episode_files_file_type
+            columns:
+              - column:
+                  name: file_type
+        - createIndex:
+            tableName: episode_files
+            indexName: idx_episode_files_upload_status
+            columns:
+              - column:
+                  name: upload_status
+        - createIndex:
+            tableName: episode_files
+            indexName: idx_episode_files_upload_session_id
+            columns:
+              - column:
+                  name: upload_session_id
+        - createIndex:
+            tableName: episode_files
+            indexName: idx_episode_files_presigned_expires_at
+            columns:
+              - column:
+                  name: presigned_expires_at

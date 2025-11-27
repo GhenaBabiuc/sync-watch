@@ -1,0 +1,85 @@
+databaseChangeLog:
+  - changeSet:
+      id: 01-create-movies-table
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: movies
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_size
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_path
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: duration_seconds
+                  type: integer
+              - column:
+                  name: thumbnail_path
+                  type: varchar(500)
+              - column:
+                  name: upload_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: genre
+                  type: varchar(100)
+              - column:
+                  name: release_year
+                  type: integer
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_title
+            columns:
+              - column:
+                  name: title
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_genre
+            columns:
+              - column:
+                  name: genre
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_release_year
+            columns:
+              - column:
+                  name: release_year
+        - createIndex:
+            tableName: movies
+            indexName: idx_movies_upload_date
+            columns:
+              - column:
+                  name: upload_date

@@ -1,0 +1,33 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: storage-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/movie_storage
+    username: movie_user
+    password: movie_password
+    driver-class-name: org.postgresql.Driver
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20GB
+      max-request-size: 20GB
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+
+minio:
+  endpoint: http://localhost:9000
+  bucket: movie-storage
+  access-key: minio_access_key
+  secret-key: minio_secret_key
+
+logging:
+  level:
+    com.example.storageservice: DEBUG
+    org.springframework.web.multipart: DEBUG
