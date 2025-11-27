@@ -1,0 +1,55 @@
+server:
+  port: 8082
+  tomcat:
+    connection-timeout: 20000
+    max-connections: 200
+    threads:
+      max: 200
+      min-spare: 10
+
+app:
+  storage:
+    api:
+      url: http://localhost:8081/api
+
+spring:
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+
+  websocket:
+    sockjs:
+      heartbeat-time: 25000
+      disconnect-delay: 5000
+
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 0
+          no-cache: true
+          no-store: true
+
+logging:
+  level:
+    com.example.syncservice: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.web.client: DEBUG
+    org.apache.coyote.http11.Http11InputBuffer: WARN
+    org.apache.coyote.http11.Http11Processor: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
