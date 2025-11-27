@@ -990,6 +990,14 @@
         if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
 
         const key = e.key.toLowerCase();
+        const controlKeys = [' ', 'f', 'arrowleft', 'arrowright'];
+
+        if (!controlKeys.includes(key)) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (e.repeat) return;
 
         if (key === 'f') {
             const videoContainer = document.querySelector('.video-container');
@@ -999,19 +1007,18 @@
                 document.exitFullscreen();
             }
         } else if (key === ' ') {
-            e.preventDefault();
             if (player.isPaused()) player.play();
             else player.pause();
         } else if (key === 'arrowleft') {
-            e.preventDefault();
-            const newTime = Math.max(0, player.getCurrentTime() - 5);
+            const currentTime = parseFloat(player.getCurrentTime());
+            const newTime = Math.max(0, currentTime - 5);
             player.setCurrentTime(newTime);
         } else if (key === 'arrowright') {
-            e.preventDefault();
-            const newTime = player.getCurrentTime() + 5;
+            const currentTime = parseFloat(player.getCurrentTime());
+            const newTime = currentTime + 5;
             player.setCurrentTime(newTime);
         }
-    });
+    }, {capture: true});
 
 </script>
 </body>
