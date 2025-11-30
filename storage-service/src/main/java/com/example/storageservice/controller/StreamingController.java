@@ -53,6 +53,11 @@ public class StreamingController {
         return streamingService.getEpisodeCover(episodeId);
     }
 
+    @GetMapping("/series/{seriesId}/cover")
+    public ResponseEntity<InputStreamResource> getSeriesCover(@PathVariable Long seriesId) {
+        return streamingService.getSeriesCover(seriesId);
+    }
+
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {

@@ -4,9 +4,11 @@ import com.example.storageservice.model.EpisodeMedia;
 import com.example.storageservice.model.MediaCategory;
 import com.example.storageservice.model.MediaFile;
 import com.example.storageservice.model.MovieMedia;
+import com.example.storageservice.model.SeriesMedia;
 import com.example.storageservice.model.UploadStatus;
 import com.example.storageservice.repository.EpisodesMediaRepository;
 import com.example.storageservice.repository.MoviesMediaRepository;
+import com.example.storageservice.repository.SeriesMediaRepository;
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,13 +36,14 @@ public class StreamingService {
     private final MinioClient minioClient;
     private final MoviesMediaRepository moviesMediaRepository;
     private final EpisodesMediaRepository episodesMediaRepository;
-
+    private final SeriesMediaRepository seriesMediaRepository;
     private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d+)-(\\d*)");
 
     @SneakyThrows
     @Transactional(readOnly = true)
     public ResponseEntity<InputStreamResource> streamMovie(Long movieId, HttpServletRequest request) {
-        Optional<MediaFile> fileOpt = moviesMediaRepository.findByMovieIdAndCategory(movieId, MediaCategory.VIDEO)
+        Optional<MediaFile> fileOpt = moviesMediaRepository.findByMovieIdAndCategoryAndIsPrimaryTrue(movieId, MediaCategory.VIDEO)
+                .or(() -> moviesMediaRepository.findByMovieIdAndCategory(movieId, MediaCategory.VIDEO))
                 .map(MovieMedia::getMediaFile);
 
         return streamMediaFile(fileOpt, request);
@@ -49,7 +52,8 @@ public class StreamingService {
     @SneakyThrows
     @Transactional(readOnly = true)
     public ResponseEntity<InputStreamResource> streamEpisode(Long episodeId, HttpServletRequest request) {
-        Optional<MediaFile> fileOpt = episodesMediaRepository.findByEpisodeIdAndCategory(episodeId, MediaCategory.VIDEO)
+        Optional<MediaFile> fileOpt = episodesMediaRepository.findByEpisodeIdAndCategoryAndIsPrimaryTrue(episodeId, MediaCategory.VIDEO)
+                .or(() -> episodesMediaRepository.findByEpisodeIdAndCategory(episodeId, MediaCategory.VIDEO))
                 .map(EpisodeMedia::getMediaFile);
 
         return streamMediaFile(fileOpt, request);
@@ -75,8 +79,19 @@ public class StreamingService {
         return serveStaticFile(fileOpt);
     }
 
+    @SneakyThrows
+    @Transactional(readOnly = true)
+    public ResponseEntity<InputStreamResource> getSeriesCover(Long seriesId) {
+        Optional<MediaFile> fileOpt = seriesMediaRepository.findBySeriesIdAndCategoryAndIsPrimaryTrue(seriesId, MediaCategory.POSTER)
+                .or(() -> seriesMediaRepository.findBySeriesIdAndCategory(seriesId, MediaCategory.POSTER))
+                .map(SeriesMedia::getMediaFile);
+
+        return serveStaticFile(fileOpt);
+    }
+
     private ResponseEntity<InputStreamResource> streamMediaFile(Optional<MediaFile> fileOpt, HttpServletRequest request) throws Exception {
         if (isNotPlayable(fileOpt)) {
+            log.warn("Video file not found or not completed");
             return ResponseEntity.notFound().build();
         }
 
@@ -96,11 +111,13 @@ public class StreamingService {
         }
 
         MediaFile file = fileOpt.get();
+        String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
+
         InputStream inputStream = getMinioObject(file.getMinioBucket(), file.getMinioObjectKey());
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(file.getContentType() != null ? file.getContentType() : "image/jpeg"))
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400") // Кэш на сутки
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                 .body(new InputStreamResource(inputStream));
     }
 

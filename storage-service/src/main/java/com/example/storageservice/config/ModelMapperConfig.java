@@ -17,6 +17,7 @@ import com.example.storageservice.model.dto.SeasonDto;
 import com.example.storageservice.model.dto.SeriesDto;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +29,9 @@ public class ModelMapperConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper mapper = new ModelMapper();
+
+        mapper.getConfiguration()
+                .setMatchingStrategy(MatchingStrategies.STRICT);
 
         mapper.addMappings(new PropertyMap<Movie, MovieDto>() {
             @Override
