@@ -20,19 +20,5 @@ public class MovieDto {
     private Integer duration;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<FileInfoDto> files;
-
-    public FileInfoDto getVideoFile() {
-        return files != null ? files.stream()
-                .filter(f -> "VIDEO".equals(f.getFileType()))
-                .findFirst()
-                .orElse(null) : null;
-    }
-
-    public FileInfoDto getCoverFile() {
-        return files != null ? files.stream()
-                .filter(f -> "COVER".equals(f.getFileType()))
-                .findFirst()
-                .orElse(null) : null;
-    }
+    private List<MediaDto> mediaFiles;
 }

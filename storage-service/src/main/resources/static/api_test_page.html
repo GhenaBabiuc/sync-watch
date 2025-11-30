@@ -3,1435 +3,926 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyncWatch Storage API Test</title>
+    <title>SyncWatch Admin Dashboard</title>
     <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #38a169;
+            --danger: #e53e3e;
+            --warning: #d69e2e;
+            --bg: #f7fafc;
+            --text: #2d3748;
+            --border: #e2e8f0;
+            --modal-overlay: rgba(0, 0, 0, 0.5);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 300px;
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.95);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
             padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .container {
             max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 20px auto;
+            padding: 0 20px;
         }
 
         .tabs {
             display: flex;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            gap: 10px;
             margin-bottom: 20px;
+            border-bottom: 2px solid var(--border);
         }
 
         .tab {
-            flex: 1;
-            padding: 15px 20px;
-            background: #f8f9fa;
-            border: none;
+            padding: 10px 20px;
             cursor: pointer;
-            font-size: 14px;
+            border: none;
+            background: none;
+            font-size: 16px;
             font-weight: 600;
-            transition: all 0.3s;
-            border-right: 1px solid #e9ecef;
-        }
-
-        .tab:last-child {
-            border-right: none;
+            color: #718096;
+            transition: all 0.2s;
         }
 
         .tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .tab:hover:not(.active) {
-            background: #e9ecef;
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+            margin-bottom: -2px;
         }
 
         .tab-content {
             display: none;
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .tab-content.active {
             display: block;
+            animation: fadeIn 0.3s;
         }
 
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            background: #f8f9fa;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
         }
 
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #4a5568;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 5px;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            align-items: end;
-        }
-
-        .form-group {
-            flex: 1;
-        }
-
-        .form-group.small {
-            flex: 0 0 120px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #4a5568;
-        }
-
-        input, textarea, select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e2e8f0;
+        .btn {
+            padding: 8px 16px;
             border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-size: 14px;
+            cursor: pointer;
             font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
+            transition: transform 0.1s;
+            color: white;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
         }
 
-        button:hover:not(:disabled) {
-            transform: translateY(-1px);
+        .btn:active {
+            transform: scale(0.98);
         }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.85rem;
         }
 
-        button.danger {
-            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+        .btn-success {
+            background: var(--success);
         }
 
-        button.secondary {
-            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        .btn-danger {
+            background: var(--danger);
         }
 
-        .response {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 6px;
-            white-space: pre-wrap;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 300px;
-            overflow-y: auto;
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
         }
 
-        .response.success {
-            background: #c6f6d5;
-            border: 1px solid #38a169;
-            color: #2d5016;
-        }
-
-        .response.error {
-            background: #fed7d7;
-            border: 1px solid #e53e3e;
-            color: #742a2a;
-        }
-
-        .file-upload {
-            border: 2px dashed #cbd5e0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .file-upload:hover {
-            border-color: #667eea;
-            background: #f7fafc;
-        }
-
-        .file-upload.dragover {
-            border-color: #667eea;
+        .btn-outline:hover {
             background: #ebf8ff;
         }
 
-        .progress-container {
-            margin: 15px 0;
-            display: none;
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.3s;
+        .toolbar {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
+            margin-bottom: 20px;
         }
 
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
+        .entity-item {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 60px 2fr 1.5fr 140px 100px;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.2s;
         }
 
-        .data-table th,
-        .data-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+        .entity-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
         }
 
-        .data-table th {
-            background: #f7fafc;
-            font-weight: 600;
+        .nested-item {
+            margin-left: 20px;
+            border-left: 3px solid var(--border);
+            padding-left: 15px;
         }
 
-        .data-table tr:hover {
-            background: #f7fafc;
+        .nested-container {
+            display: none;
+            margin-top: 10px;
         }
 
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-
-        .action-buttons button {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
+        .nested-container.open {
+            display: block;
         }
 
         .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+            display: block;
+            font-size: 0.75rem;
             font-weight: 600;
+            margin-bottom: 2px;
         }
 
-        .status-badge.completed {
-            background: #c6f6d5;
-            color: #2d5016;
+        .status-ok {
+            color: var(--success);
         }
 
-        .status-badge.pending {
-            background: #fef5e7;
-            color: #7c2d12;
+        .status-missing {
+            color: #cbd5e0;
         }
 
-        .status-badge.failed {
-            background: #fed7d7;
-            color: #742a2a;
+        .status-missing-important {
+            color: var(--danger);
+        }
+
+        .drop-target {
+            border: 2px dashed #cbd5e0;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+        }
+
+        .drop-target.dragover {
+            background: #ebf8ff;
+            border-color: var(--primary);
+            transform: scale(1.02);
+        }
+
+        .upload-controls select {
+            font-size: 0.75rem;
+            padding: 2px;
+            margin-bottom: 4px;
+            width: auto;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--modal-overlay);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 500px;
+            max-width: 90%;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        #upload-manager {
+            position: fixed;
+            bottom: 0;
+            right: 20px;
+            width: 400px;
+            background: white;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s;
+            max-height: 500px;
+        }
+
+        #upload-manager.minimized {
+            transform: translateY(calc(100% - 40px));
+        }
+
+        .um-header {
+            padding: 10px 15px;
+            background: #2d3748;
+            color: white;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .um-body {
+            overflow-y: auto;
+            padding: 10px;
+            flex: 1;
+            background: #f7fafc;
+            height: 300px;
+        }
+
+        .upload-task {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .progress-bar-bg {
+            height: 4px;
+            background: #edf2f7;
+            margin-top: 8px;
+            border-radius: 2px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--success);
+            width: 0%;
+            transition: width 0.2s;
         }
     </style>
 </head>
 <body>
+
 <div class="header">
-    <h1>🎬 SyncWatch Storage API Test Console</h1>
-    <p>Test all endpoints of your movie/series storage service</p>
+    <h2>汐 SyncWatch Admin</h2>
+    <button class="btn btn-sm" onclick="alert('Simulating Webhooks automatically post-upload.')">Webhook Status: Auto
+    </button>
 </div>
 
 <div class="container">
     <div class="tabs">
-        <button class="tab active" onclick="showTab('movies')">Movies</button>
-        <button class="tab" onclick="showTab('series')">Series</button>
-        <button class="tab" onclick="showTab('files')">File Upload</button>
-        <button class="tab" onclick="showTab('search')">Search</button>
-        <button class="tab" onclick="showTab('webhooks')">Webhooks</button>
+        <div class="tab active" onclick="switchTab('movies')">Movies</div>
+        <div class="tab" onclick="switchTab('series')">Series & TV</div>
     </div>
 
-    <!-- Movies Tab -->
     <div id="movies" class="tab-content active">
-        <div class="section">
-            <div class="section-title">Create Movie</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Title *</label>
-                    <input type="text" id="movie-title" placeholder="Enter movie title">
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="number" id="movie-year" min="1900" max="2030" placeholder="2024">
-                </div>
-                <div class="form-group small">
-                    <label>Duration (min)</label>
-                    <input type="number" id="movie-duration" placeholder="120">
-                </div>
+        <div class="card">
+            <div class="toolbar">
+                <h3>Movies Library</h3>
+                <button class="btn btn-success" onclick="openModal('MOVIE', null)">+ Add Movie</button>
             </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="movie-description" rows="3" placeholder="Movie description"></textarea>
-            </div>
-            <button onclick="createMovie()">Create Movie</button>
-            <div id="create-movie-response" class="response" style="display: none;"></div>
-        </div>
 
-        <div class="section">
-            <div class="section-title">Get All Movies</div>
-            <div class="form-row">
-                <div class="form-group small">
-                    <label>Page</label>
-                    <input type="number" id="movies-page" value="0" min="0">
-                </div>
-                <div class="form-group small">
-                    <label>Size</label>
-                    <input type="number" id="movies-size" value="10" min="1" max="100">
-                </div>
-                <div class="form-group">
-                    <label>Title Filter</label>
-                    <input type="text" id="movies-title-filter" placeholder="Search by title">
-                </div>
-                <div class="form-group small">
-                    <label>Year Filter</label>
-                    <input type="number" id="movies-year-filter" placeholder="2024">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getAllMovies()">Get Movies</button>
-                </div>
-            </div>
-            <div id="movies-table-container"></div>
-        </div>
+            <div id="movies-list">Loading...</div>
 
-        <div class="section">
-            <div class="section-title">Get Movie by ID</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Movie ID *</label>
-                    <input type="number" id="get-movie-id" placeholder="Enter movie ID">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getMovieById()">Get Movie</button>
-                </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-outline" onclick="changeMoviePage(-1)">Previous</button>
+                <span id="movie-page-indicator" style="margin: 0 15px;">Page 1</span>
+                <button class="btn btn-outline" onclick="changeMoviePage(1)">Next</button>
             </div>
-            <div id="get-movie-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Update Movie</div>
-            <div class="form-row">
-                <div class="form-group small">
-                    <label>Movie ID *</label>
-                    <input type="number" id="update-movie-id" placeholder="ID">
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="update-movie-title" placeholder="New title">
-                </div>
-                <div class="form-group small">
-                    <label>Year</label>
-                    <input type="number" id="update-movie-year" placeholder="2024">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="update-movie-description" rows="3" placeholder="Updated description"></textarea>
-            </div>
-            <button onclick="updateMovie()">Update Movie</button>
-            <div id="update-movie-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Delete Movie</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Movie ID *</label>
-                    <input type="number" id="delete-movie-id" placeholder="Enter movie ID">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button class="danger" onclick="deleteMovie()">Delete Movie</button>
-                </div>
-            </div>
-            <div id="delete-movie-response" class="response" style="display: none;"></div>
         </div>
     </div>
 
     <div id="series" class="tab-content">
-        <div class="section">
-            <div class="section-title">Create Series</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Title *</label>
-                    <input type="text" id="series-title" placeholder="Enter series title">
-                </div>
-                <div class="form-group small">
-                    <label>Year</label>
-                    <input type="number" id="series-year" min="1900" max="2030" placeholder="2024">
-                </div>
+        <div class="card">
+            <div class="toolbar">
+                <h3>Series Library</h3>
+                <button class="btn btn-success" onclick="openModal('SERIES', null)">+ Add Series</button>
             </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="series-description" rows="3" placeholder="Series description"></textarea>
-            </div>
-            <button onclick="createSeries()">Create Series</button>
-            <div id="create-series-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Get All Series</div>
-            <div class="form-row">
-                <div class="form-group small">
-                    <label>Page</label>
-                    <input type="number" id="series-page" value="0" min="0">
-                </div>
-                <div class="form-group small">
-                    <label>Size</label>
-                    <input type="number" id="series-size" value="10" min="1" max="100">
-                </div>
-                <div class="form-group">
-                    <label>Title Filter</label>
-                    <input type="text" id="series-title-filter" placeholder="Search by title">
-                </div>
-                <div class="form-group small">
-                    <label>Year Filter</label>
-                    <input type="number" id="series-year-filter" placeholder="2024">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getAllSeries()">Get Series</button>
-                </div>
-            </div>
-            <div id="series-table-container"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Create Season</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Series ID *</label>
-                    <input type="number" id="season-series-id" placeholder="Series ID">
-                </div>
-                <div class="form-group small">
-                    <label>Season Number *</label>
-                    <input type="number" id="season-number" min="1" max="50" placeholder="1">
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="season-title" placeholder="Season title">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="season-description" rows="3" placeholder="Season description"></textarea>
-            </div>
-            <button onclick="createSeason()">Create Season</button>
-            <div id="create-season-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Create Episode</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Season ID *</label>
-                    <input type="number" id="episode-season-id" placeholder="Season ID">
-                </div>
-                <div class="form-group small">
-                    <label>Episode Number *</label>
-                    <input type="number" id="episode-number" min="1" max="500" placeholder="1">
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="episode-title" placeholder="Episode title">
-                </div>
-                <div class="form-group small">
-                    <label>Duration (min)</label>
-                    <input type="number" id="episode-duration" placeholder="45">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="episode-description" rows="3" placeholder="Episode description"></textarea>
-            </div>
-            <button onclick="createEpisode()">Create Episode</button>
-            <div id="create-episode-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Get Seasons & Episodes</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Series ID</label>
-                    <input type="number" id="get-seasons-series-id" placeholder="Series ID">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getSeasonsBySeries()">Get Seasons</button>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Season ID</label>
-                    <input type="number" id="get-episodes-season-id" placeholder="Season ID">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getEpisodesBySeason()">Get Episodes</button>
-                </div>
-            </div>
-            <div id="seasons-episodes-response" class="response" style="display: none;"></div>
+            <p style="color:#718096; font-size:0.9rem; margin-bottom:15px;">Expand Series > Seasons > Episodes to manage
+                content.</p>
+            <div id="series-list">Loading...</div>
         </div>
     </div>
+</div>
 
-    <!-- Files Tab -->
-    <div id="files" class="tab-content">
-        <div class="section">
-            <div class="section-title">Upload File</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Entity Type *</label>
-                    <select id="upload-entity-type">
-                        <option value="MOVIE">Movie</option>
-                        <option value="EPISODE">Episode</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Entity ID *</label>
-                    <input type="number" id="upload-entity-id" placeholder="Movie or Episode ID">
-                </div>
-                <div class="form-group">
-                    <label>File Type *</label>
-                    <select id="upload-file-type">
-                        <option value="video">Video</option>
-                        <option value="cover">Cover</option>
-                    </select>
-                </div>
+<div id="crud-modal" class="modal-overlay">
+    <div class="modal">
+        <h3 id="modal-title">Create Entity</h3>
+        <form id="crud-form" onsubmit="handleFormSubmit(event)">
+            <input type="hidden" id="entity-id">
+            <input type="hidden" id="entity-type">
+            <input type="hidden" id="parent-id">
+
+            <div class="form-group" id="field-parent-info"
+                 style="display:none; color: #718096; font-size: 0.9rem;"></div>
+
+            <div class="form-group" id="field-number" style="display:none;">
+                <label id="label-number">Number</label>
+                <input type="number" id="input-number" min="1">
             </div>
 
-            <div class="file-upload" id="file-upload-area">
-                <input type="file" id="upload-file" style="display: none;" accept="video/*,image/*">
-                <div id="upload-text">
-                    📁 Click to select file or drag and drop
-                </div>
-            </div>
-
-            <div class="progress-container" id="upload-progress-container">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="upload-progress-fill">0%</div>
-                </div>
-                <div id="upload-status" style="margin-top: 10px; font-size: 14px;"></div>
-            </div>
-
-            <button id="start-upload-btn" onclick="startFileUpload()" disabled>Start Upload</button>
-            <div id="upload-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Get Files</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Movie ID</label>
-                    <input type="number" id="get-movie-files-id" placeholder="Movie ID">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getMovieFiles()">Get Movie Files</button>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Episode ID</label>
-                    <input type="number" id="get-episode-files-id" placeholder="Episode ID">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getEpisodeFiles()">Get Episode Files</button>
-                </div>
-            </div>
-            <div id="files-response" class="response" style="display: none;"></div>
-        </div>
-    </div>
-
-    <div id="search" class="tab-content">
-        <div class="section">
-            <div class="section-title">Search All Content</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="search-title" placeholder="Search by title">
-                </div>
-                <div class="form-group small">
-                    <label>Year</label>
-                    <input type="number" id="search-year" placeholder="2024">
-                </div>
-                <div class="form-group small">
-                    <label>Page</label>
-                    <input type="number" id="search-page" value="0" min="0">
-                </div>
-                <div class="form-group small">
-                    <label>Size</label>
-                    <input type="number" id="search-size" value="20" min="1" max="100">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="searchAllContent()">Search</button>
-                </div>
-            </div>
-            <div id="search-all-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Advanced Movie Search</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="movie-search-title" placeholder="Search by title">
-                </div>
-                <div class="form-group small">
-                    <label>Min Duration</label>
-                    <input type="number" id="movie-search-min-duration" placeholder="90">
-                </div>
-                <div class="form-group small">
-                    <label>Max Duration</label>
-                    <input type="number" id="movie-search-max-duration" placeholder="180">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="searchMovies()">Search Movies</button>
-                </div>
-            </div>
-            <div id="movie-search-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Advanced Series Search</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="series-search-title" placeholder="Search by title">
-                </div>
-                <div class="form-group small">
-                    <label>Min Seasons</label>
-                    <input type="number" id="series-search-min-seasons" placeholder="1">
-                </div>
-                <div class="form-group small">
-                    <label>Max Seasons</label>
-                    <input type="number" id="series-search-max-seasons" placeholder="10">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="searchSeries()">Search Series</button>
-                </div>
-            </div>
-            <div id="series-search-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Content Statistics & Recent</div>
-            <div class="form-row">
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getContentStats()">Get Statistics</button>
-                </div>
-                <div class="form-group small">
-                    <label>Limit</label>
-                    <input type="number" id="recent-limit" value="10" min="1" max="50">
-                </div>
-                <div class="form-group" style="flex: 0 0 auto;">
-                    <button onclick="getRecentContent()">Get Recent</button>
-                </div>
-            </div>
-            <div id="stats-recent-response" class="response" style="display: none;"></div>
-        </div>
-    </div>
-
-    <div id="webhooks" class="tab-content">
-        <div class="section">
-            <div class="section-title">Webhook Health Check</div>
-            <button onclick="checkWebhookHealth()">Check Health</button>
-            <div id="webhook-health-response" class="response" style="display: none;"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Test Webhook</div>
             <div class="form-group">
-                <label>Test Payload (JSON)</label>
-                <textarea id="webhook-payload" rows="5" placeholder='{"test": "data"}'></textarea>
+                <label>Title</label>
+                <input type="text" id="input-title" required placeholder="Main Title">
             </div>
-            <button onclick="testWebhook()">Send Test Webhook</button>
-            <div id="webhook-test-response" class="response" style="display: none;"></div>
-        </div>
 
-        <div class="section">
-            <div class="section-title">Simulate MinIO Notification</div>
-            <div class="form-group">
-                <label>MinIO Notification Payload (JSON)</label>
-                <textarea id="minio-notification" rows="10"
-                          placeholder='{"Records": [{"eventName": "s3:ObjectCreated:Put", "s3": {"bucket": {"name": "movie-storage"}, "object": {"key": "test-object.mp4"}}}]}'></textarea>
+            <div class="form-group" id="field-year">
+                <label>Year</label>
+                <input type="number" id="input-year" min="1900" max="2030">
             </div>
-            <button onclick="sendMinIONotification()">Send MinIO Notification</button>
-            <div id="minio-notification-response" class="response" style="display: none;"></div>
-        </div>
+
+            <div class="form-group" id="field-duration" style="display:none;">
+                <label>Duration (minutes)</label>
+                <input type="number" id="input-duration">
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="input-description" rows="3"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="upload-manager">
+    <div class="um-header" onclick="document.getElementById('upload-manager').classList.toggle('minimized')">
+        <span>Active Uploads (<span id="active-count">0</span>)</span>
+        <span>▼</span>
+    </div>
+    <div class="um-body" id="upload-queue">
+        <div style="text-align:center; color:#a0aec0; margin-top:20px;">No uploads active</div>
     </div>
 </div>
 
 <script>
     const API_BASE = 'http://localhost:8081/api';
+    let moviePage = 0;
+    const pageSize = 10;
+    const uploadQueue = [];
+    let activeUploads = 0;
 
-    function showTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-
-        document.getElementById(tabName).classList.add('active');
-
-        event.target.classList.add('active');
-    }
-
-    function showResponse(elementId, response, isError = false) {
-        const element = document.getElementById(elementId);
-        element.textContent = JSON.stringify(response, null, 2);
-        element.className = `response ${isError ? 'error' : 'success'}`;
-        element.style.display = 'block';
-    }
-
-    function createDataTable(data, containerId) {
-        const container = document.getElementById(containerId);
-        if (!data || data.length === 0) {
-            container.innerHTML = '<p>No data found.</p>';
-            return;
-        }
-
-        const headers = Object.keys(data[0]);
-        let html = '<table class="data-table"><thead><tr>';
-
-        headers.forEach(header => {
-            html += `<th>${header}</th>`;
-        });
-        html += '<th>Actions</th></tr></thead><tbody>';
-
-        data.forEach(item => {
-            html += '<tr>';
-            headers.forEach(header => {
-                let value = item[header];
-                if (typeof value === 'object' && value !== null) {
-                    value = JSON.stringify(value);
-                }
-                if (String(value).length > 50) {
-                    value = String(value).substring(0, 50) + '...';
-                }
-                html += `<td>${value || ''}</td>`;
-            });
-
-            html += '<td><div class="action-buttons">';
-            html += `<button onclick="viewItem(${item.id}, '${item.constructor?.name || 'item'}')">View</button>`;
-            if (item.id) {
-                html += `<button class="danger" onclick="deleteItem(${item.id}, '${containerId}')">Delete</button>`;
-            }
-            html += '</div></td>';
-            html += '</tr>';
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
-    }
-
-    function viewItem(id, type) {
-        alert(`Viewing ${type} with ID: ${id}`);
-    }
-
-    function deleteItem(id, containerType) {
-        if (confirm(`Are you sure you want to delete item ${id}?`)) {
-            let endpoint = '';
-            if (containerType.includes('movie')) {
-                endpoint = `/movies/${id}`;
-            } else if (containerType.includes('series')) {
-                endpoint = `/series/${id}`;
-            }
-
-            if (endpoint) {
-                fetch(`${API_BASE}${endpoint}`, {method: 'DELETE'})
-                    .then(response => {
-                        if (response.ok) {
-                            alert('Item deleted successfully');
-                            // Refresh the table
-                            if (containerType.includes('movie')) {
-                                getAllMovies();
-                            } else if (containerType.includes('series')) {
-                                getAllSeries();
-                            }
-                        } else {
-                            alert('Failed to delete item');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Delete error:', error);
-                        alert('Error deleting item');
-                    });
-            }
-        }
-    }
-
-    async function createMovie() {
-        const data = {
-            title: document.getElementById('movie-title').value,
-            description: document.getElementById('movie-description').value,
-            year: parseInt(document.getElementById('movie-year').value) || null,
-            duration: parseInt(document.getElementById('movie-duration').value) || null
-        };
-
-        try {
-            const response = await fetch(`${API_BASE}/movies`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            showResponse('create-movie-response', result, !response.ok);
-
-            if (response.ok) {
-                document.getElementById('movie-title').value = '';
-                document.getElementById('movie-description').value = '';
-                document.getElementById('movie-year').value = '';
-                document.getElementById('movie-duration').value = '';
-            }
-        } catch (error) {
-            showResponse('create-movie-response', {error: error.message}, true);
-        }
-    }
-
-    async function getAllMovies() {
-        const page = document.getElementById('movies-page').value;
-        const size = document.getElementById('movies-size').value;
-        const title = document.getElementById('movies-title-filter').value;
-        const year = document.getElementById('movies-year-filter').value;
-
-        const params = new URLSearchParams({
-            page: page,
-            size: size,
-            ...(title && {title}),
-            ...(year && {year})
-        });
-
-        try {
-            const response = await fetch(`${API_BASE}/movies?${params}`);
-            const result = await response.json();
-
-            if (response.ok && result.content) {
-                createDataTable(result.content, 'movies-table-container');
-            } else {
-                showResponse('movies-table-container', result, !response.ok);
-            }
-        } catch (error) {
-            document.getElementById('movies-table-container').innerHTML =
-                `<div class="response error">${error.message}</div>`;
-        }
-    }
-
-    async function getMovieById() {
-        const id = document.getElementById('get-movie-id').value;
-        if (!id) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/movies/${id}`);
-            const result = await response.json();
-            showResponse('get-movie-response', result, !response.ok);
-        } catch (error) {
-            showResponse('get-movie-response', {error: error.message}, true);
-        }
-    }
-
-    async function updateMovie() {
-        const id = document.getElementById('update-movie-id').value;
-        if (!id) return;
-
-        const data = {};
-        const title = document.getElementById('update-movie-title').value;
-        const year = document.getElementById('update-movie-year').value;
-        const description = document.getElementById('update-movie-description').value;
-
-        if (title) data.title = title;
-        if (year) data.releaseYear = parseInt(year);
-        if (description) data.description = description;
-
-        try {
-            const response = await fetch(`${API_BASE}/movies/${id}`, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            showResponse('update-movie-response', result, !response.ok);
-        } catch (error) {
-            showResponse('update-movie-response', {error: error.message}, true);
-        }
-    }
-
-    async function deleteMovie() {
-        const id = document.getElementById('delete-movie-id').value;
-        if (!id) return;
-
-        if (!confirm(`Are you sure you want to delete movie ${id}?`)) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/movies/${id}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                showResponse('delete-movie-response', {message: 'Movie deleted successfully'});
-            } else {
-                const result = await response.json();
-                showResponse('delete-movie-response', result, true);
-            }
-        } catch (error) {
-            showResponse('delete-movie-response', {error: error.message}, true);
-        }
-    }
-
-    async function createSeries() {
-        const data = {
-            title: document.getElementById('series-title').value,
-            description: document.getElementById('series-description').value,
-            year: parseInt(document.getElementById('series-year').value) || null
-        };
-
-        try {
-            const response = await fetch(`${API_BASE}/series`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            showResponse('create-series-response', result, !response.ok);
-
-            if (response.ok) {
-                document.getElementById('series-title').value = '';
-                document.getElementById('series-description').value = '';
-                document.getElementById('series-year').value = '';
-            }
-        } catch (error) {
-            showResponse('create-series-response', {error: error.message}, true);
-        }
-    }
-
-    async function getAllSeries() {
-        const page = document.getElementById('series-page').value;
-        const size = document.getElementById('series-size').value;
-        const title = document.getElementById('series-title-filter').value;
-        const year = document.getElementById('series-year-filter').value;
-
-        const params = new URLSearchParams({
-            page: page,
-            size: size,
-            ...(title && {title}),
-            ...(year && {year})
-        });
-
-        try {
-            const response = await fetch(`${API_BASE}/series?${params}`);
-            const result = await response.json();
-
-            if (response.ok && result.content) {
-                createDataTable(result.content, 'series-table-container');
-            } else {
-                showResponse('series-table-container', result, !response.ok);
-            }
-        } catch (error) {
-            document.getElementById('series-table-container').innerHTML =
-                `<div class="response error">${error.message}</div>`;
-        }
-    }
-
-    async function createSeason() {
-        const data = {
-            seriesId: parseInt(document.getElementById('season-series-id').value),
-            seasonNumber: parseInt(document.getElementById('season-number').value),
-            title: document.getElementById('season-title').value,
-            description: document.getElementById('season-description').value
-        };
-
-        if (!data.seriesId || !data.seasonNumber) {
-            alert('Series ID and Season Number are required');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE}/series/${data.seriesId}/seasons`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            showResponse('create-season-response', result, !response.ok);
-
-            if (response.ok) {
-                document.getElementById('season-series-id').value = '';
-                document.getElementById('season-number').value = '';
-                document.getElementById('season-title').value = '';
-                document.getElementById('season-description').value = '';
-            }
-        } catch (error) {
-            showResponse('create-season-response', {error: error.message}, true);
-        }
-    }
-
-    async function createEpisode() {
-        const seasonId = parseInt(document.getElementById('episode-season-id').value);
-        const data = {
-            seasonId: seasonId,
-            episodeNumber: parseInt(document.getElementById('episode-number').value),
-            title: document.getElementById('episode-title').value,
-            description: document.getElementById('episode-description').value,
-            duration: parseInt(document.getElementById('episode-duration').value) || null
-        };
-
-        if (!data.seasonId || !data.episodeNumber) {
-            alert('Season ID and Episode Number are required');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE}/series/seasons/${seasonId}/episodes`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            showResponse('create-episode-response', result, !response.ok);
-
-            if (response.ok) {
-                document.getElementById('episode-season-id').value = '';
-                document.getElementById('episode-number').value = '';
-                document.getElementById('episode-title').value = '';
-                document.getElementById('episode-description').value = '';
-                document.getElementById('episode-duration').value = '';
-            }
-        } catch (error) {
-            showResponse('create-episode-response', {error: error.message}, true);
-        }
-    }
-
-    async function getSeasonsBySeries() {
-        const seriesId = document.getElementById('get-seasons-series-id').value;
-        if (!seriesId) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/series/${seriesId}/seasons`);
-            const result = await response.json();
-            showResponse('seasons-episodes-response', {seasons: result}, !response.ok);
-        } catch (error) {
-            showResponse('seasons-episodes-response', {error: error.message}, true);
-        }
-    }
-
-    async function getEpisodesBySeason() {
-        const seasonId = document.getElementById('get-episodes-season-id').value;
-        if (!seasonId) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/series/seasons/${seasonId}/episodes`);
-            const result = await response.json();
-            showResponse('seasons-episodes-response', {episodes: result}, !response.ok);
-        } catch (error) {
-            showResponse('seasons-episodes-response', {error: error.message}, true);
-        }
-    }
-
-    let selectedFile = null;
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const uploadArea = document.getElementById('file-upload-area');
-        const fileInput = document.getElementById('upload-file');
-        const uploadText = document.getElementById('upload-text');
-        const startBtn = document.getElementById('start-upload-btn');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                selectedFile = file;
-                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                uploadText.innerHTML = `
-                        📁 <strong>${file.name}</strong><br>
-                        Size: ${sizeMB} MB<br>
-                        Type: ${file.type}
-                    `;
-                startBtn.disabled = false;
-            } else {
-                selectedFile = null;
-                uploadText.textContent = '📁 Click to select file or drag and drop';
-                startBtn.disabled = true;
-            }
-        }
+    document.addEventListener('DOMContentLoaded', () => {
+        loadMovies();
+        loadSeries();
+        setInterval(processUploadQueue, 1000);
     });
 
-    async function startFileUpload() {
-        if (!selectedFile) return;
+    function switchTab(id) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.tab[onclick="switchTab('${id}')"]`).classList.add('active');
+        document.getElementById(id).classList.add('active');
+    }
 
-        const entityType = document.getElementById('upload-entity-type').value;
-        const entityId = parseInt(document.getElementById('upload-entity-id').value);
-        const fileType = document.getElementById('upload-file-type').value;
+    function renderMovieStatus(hasVideo, hasPoster) {
+        return `
+            <div style="text-align:center; display:flex; flex-direction:column;">
+                <span class="status-badge ${hasVideo ? 'status-ok' : 'status-missing-important'}">
+                    ${hasVideo ? '✅ Video OK' : '❌ No Video'}
+                </span>
+                <span class="status-badge ${hasPoster ? 'status-ok' : 'status-missing'}">
+                    ${hasPoster ? '✅ Cover OK' : '⚪ No Cover'}
+                </span>
+            </div>
+        `;
+    }
 
-        if (!entityId) {
-            alert('Entity ID is required');
+    function renderEpisodeStatus(hasVideo, hasThumb) {
+        return `
+            <div style="text-align:center; display:flex; flex-direction:column;">
+                <span class="status-badge ${hasVideo ? 'status-ok' : 'status-missing-important'}">
+                    ${hasVideo ? '✅ Video OK' : '❌ No Video'}
+                </span>
+                <span class="status-badge ${hasThumb ? 'status-ok' : 'status-missing'}">
+                    ${hasThumb ? '✅ Thumb OK' : '⚪ No Thumb'}
+                </span>
+            </div>
+        `;
+    }
+
+    function renderSeriesStatus(hasPoster) {
+        return `
+            <div style="text-align:center; display:flex; flex-direction:column; justify-content:center; height:100%;">
+                <span class="status-badge ${hasPoster ? 'status-ok' : 'status-missing'}">
+                    ${hasPoster ? '✅ Cover OK' : '⚪ No Cover'}
+                </span>
+            </div>
+        `;
+    }
+
+    async function loadMovies() {
+        const list = document.getElementById('movies-list');
+        try {
+            const res = await fetch(`${API_BASE}/movies?page=${moviePage}&size=${pageSize}`);
+            const data = await res.json();
+
+            document.getElementById('movie-page-indicator').innerText = `Page ${moviePage + 1} / ${data.totalPages}`;
+            list.innerHTML = '';
+
+            data.content.forEach(m => {
+                const hasVideo = m.mediaFiles.some(f => f.category === 'VIDEO' && f.uploadStatus === 'COMPLETED');
+                const hasPoster = m.mediaFiles.some(f => f.category === 'POSTER' && f.uploadStatus === 'COMPLETED');
+
+                const html = `
+                    <div class="entity-item">
+                        <div style="font-weight:bold; color:#a0aec0;">#${m.id}</div>
+                        <div>
+                            <div style="font-weight:bold; font-size:1.1rem;">${m.title}</div>
+                            <div style="font-size:0.85rem; color:#718096;">${m.year || '?'} • ${m.duration || '?'} min</div>
+                        </div>
+
+                        <div class="drop-target"
+                             ondragover="event.preventDefault(); this.classList.add('dragover');"
+                             ondragleave="this.classList.remove('dragover');"
+                             ondrop="handleDrop(event, 'MOVIE', ${m.id})">
+                             <div class="upload-controls">
+                                <select id="cat-movie-${m.id}" onclick="event.stopPropagation()">
+                                    <option value="VIDEO">Video File</option>
+                                    <option value="POSTER">Cover Image</option>
+                                    <option value="BACKDROP">Backdrop</option>
+                                </select>
+                            </div>
+                            <div style="font-size:0.8rem; color:#718096;">Drop File</div>
+                        </div>
+
+                        ${renderMovieStatus(hasVideo, hasPoster)}
+
+                        <div style="display:flex; gap:5px; justify-content:flex-end;">
+                            <button class="btn btn-sm btn-outline" onclick='openModal("MOVIE", ${JSON.stringify(m).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEntity('movies', ${m.id})">Del</button>
+                        </div>
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', html);
+            });
+        } catch (e) {
+            list.innerHTML = `<p style="color:red">Error: ${e.message}</p>`;
+        }
+    }
+
+    async function loadSeries() {
+        const list = document.getElementById('series-list');
+        list.innerHTML = 'Loading...';
+        try {
+            const res = await fetch(`${API_BASE}/series?size=100`);
+            const data = await res.json();
+            list.innerHTML = '';
+
+            data.content.forEach(s => {
+                const hasPoster = s.mediaFiles && s.mediaFiles.some(f => f.category === 'POSTER' && f.uploadStatus === 'COMPLETED');
+
+                const html = `
+                    <div class="entity-item" style="background:#f8fafc; border-left: 4px solid var(--secondary);">
+                        <div style="font-weight:bold;">S:${s.id}</div>
+                        <div>
+                            <strong>${s.title}</strong> (${s.year || '-'})
+                            <div style="margin-top: 5px;">
+                                <button class="btn btn-sm btn-outline" onclick="toggleSeasons(this, ${s.id}, '${s.title.replace(/'/g, "\\'")}')">Show Seasons</button>
+                            </div>
+                        </div>
+
+                        <div class="drop-target"
+                             ondragover="event.preventDefault(); this.classList.add('dragover');"
+                             ondragleave="this.classList.remove('dragover');"
+                             ondrop="handleDrop(event, 'SERIES', ${s.id})">
+                             <div class="upload-controls">
+                                <select id="cat-series-${s.id}" onclick="event.stopPropagation()">
+                                    <option value="POSTER">Series Cover</option>
+                                    <option value="BACKDROP">Backdrop</option>
+                                </select>
+                            </div>
+                            <div style="font-size:0.8rem; color:#718096;">Drop File</div>
+                        </div>
+
+                        ${renderSeriesStatus(hasPoster)}
+
+                        <div style="display:flex; gap:5px; justify-content:flex-end;">
+                            <button class="btn btn-sm btn-outline" onclick='openModal("SERIES", ${JSON.stringify(s).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEntity('series', ${s.id})">Del</button>
+                        </div>
+                    </div>
+                    <div id="seasons-container-${s.id}" class="nested-container nested-item"></div>
+                `;
+                list.insertAdjacentHTML('beforeend', html);
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function toggleSeasons(btn, seriesId, seriesTitle) {
+        const container = document.getElementById(`seasons-container-${seriesId}`);
+        if (container.classList.contains('open')) {
+            container.classList.remove('open');
+            btn.innerText = "Show Seasons";
             return;
         }
 
-        const uploadData = {
-            originalFilename: selectedFile.name,
-            mimeType: selectedFile.type,
-            fileSize: selectedFile.size,
-            entityId: entityId,
-            entityType: entityType,
-            fileType: fileType
+        btn.innerText = "Loading...";
+        try {
+            const res = await fetch(`${API_BASE}/series/${seriesId}/seasons`);
+            const data = await res.json();
+
+            let html = `
+                <div style="margin: 10px 0;">
+                    <button class="btn btn-sm btn-success" onclick="openModal('SEASON', null, ${seriesId})">+ Add Season to "${seriesTitle}"</button>
+                </div>
+            `;
+
+            data.content.forEach(s => {
+                html += `
+                    <div class="entity-item">
+                        <div>Sn:${s.seasonNumber}</div>
+                        <div>${s.title || `Season ${s.seasonNumber}`}</div>
+                        <div style="text-align:center; color:#ccc; font-size:0.8rem;">(Season Container)</div>
+                        <div style="grid-column: span 1">
+                            <button class="btn btn-sm btn-outline" onclick="toggleEpisodes(this, ${s.id}, ${s.seasonNumber})">Show Episodes</button>
+                        </div>
+                        <div style="display:flex; gap:5px; justify-content:flex-end;">
+                            <button class="btn btn-sm btn-outline" onclick='openModal("SEASON", ${JSON.stringify(s).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEntity('series/seasons', ${s.id})">Del</button>
+                        </div>
+                    </div>
+                    <div id="episodes-container-${s.id}" class="nested-container nested-item" style="border-left-color: var(--success);"></div>
+                `;
+            });
+            container.innerHTML = html;
+            container.classList.add('open');
+            btn.innerText = "Hide Seasons";
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function toggleEpisodes(btn, seasonId, seasonNum) {
+        const container = document.getElementById(`episodes-container-${seasonId}`);
+        if (container.classList.contains('open')) {
+            container.classList.remove('open');
+            btn.innerText = "Show Episodes";
+            return;
+        }
+
+        btn.innerText = "Loading...";
+        try {
+            const res = await fetch(`${API_BASE}/series/seasons/${seasonId}/episodes`);
+            const data = await res.json();
+
+            let html = `
+                <div style="margin: 10px 0;">
+                    <button class="btn btn-sm btn-success" onclick="openModal('EPISODE', null, ${seasonId})">+ Add Episode to S${seasonNum}</button>
+                </div>
+            `;
+
+            data.content.forEach(ep => {
+                const hasVideo = ep.mediaFiles && ep.mediaFiles.some(m => m.category === 'VIDEO' && m.uploadStatus === 'COMPLETED');
+                const hasThumb = ep.mediaFiles && ep.mediaFiles.some(m => m.category === 'POSTER' && m.uploadStatus === 'COMPLETED');
+
+                html += `
+                    <div class="entity-item">
+                        <div style="color:#718096;">Ep:${ep.episodeNumber}</div>
+                        <div>
+                            <strong>${ep.title || `Episode ${ep.episodeNumber}`}</strong>
+                            <div style="font-size:0.8rem; color:#718096;">${ep.duration ? ep.duration + ' min' : ''}</div>
+                        </div>
+
+                        <div class="drop-target"
+                             ondragover="event.preventDefault(); this.classList.add('dragover');"
+                             ondragleave="this.classList.remove('dragover');"
+                             ondrop="handleDrop(event, 'EPISODE', ${ep.id})">
+                             <div class="upload-controls">
+                                <select id="cat-ep-${ep.id}" onclick="event.stopPropagation()">
+                                    <option value="VIDEO">Video File</option>
+                                    <option value="POSTER">Thumbnail</option>
+                                </select>
+                            </div>
+                            <div style="font-size:0.8rem; color:#718096;">Drop File</div>
+                        </div>
+
+                        ${renderEpisodeStatus(hasVideo, hasThumb)}
+
+                        <div style="display:flex; gap:5px; justify-content:flex-end;">
+                            <button class="btn btn-sm btn-outline" onclick='openModal("EPISODE", ${JSON.stringify(ep).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEntity('series/episodes', ${ep.id})">Del</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            container.classList.add('open');
+            btn.innerText = "Hide Episodes";
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function openModal(type, entityData = null, parentId = null) {
+        document.getElementById('crud-modal').classList.add('open');
+        const form = document.getElementById('crud-form');
+        form.reset();
+
+        document.getElementById('entity-type').value = type;
+        document.getElementById('entity-id').value = entityData ? entityData.id : '';
+        document.getElementById('parent-id').value = parentId || '';
+        document.getElementById('modal-title').innerText = (entityData ? "Edit " : "Create ") + type;
+
+        const fYear = document.getElementById('field-year');
+        const fNum = document.getElementById('field-number');
+        const fDur = document.getElementById('field-duration');
+        const fParent = document.getElementById('field-parent-info');
+
+        fYear.style.display = (type === 'MOVIE' || type === 'SERIES') ? 'block' : 'none';
+        fNum.style.display = (type === 'SEASON' || type === 'EPISODE') ? 'block' : 'none';
+        fDur.style.display = (type === 'MOVIE' || type === 'EPISODE') ? 'block' : 'none';
+
+        if (parentId) {
+            fParent.style.display = 'block';
+            fParent.innerText = `Adding to parent ID: ${parentId}`;
+        } else {
+            fParent.style.display = 'none';
+        }
+        document.getElementById('label-number').innerText = type === 'SEASON' ? 'Season Number' : 'Episode Number';
+
+        if (entityData) {
+            document.getElementById('input-title').value = entityData.title || '';
+            document.getElementById('input-description').value = entityData.description || '';
+            if (type === 'MOVIE' || type === 'SERIES') document.getElementById('input-year').value = entityData.year || '';
+            if (type === 'MOVIE' || type === 'EPISODE') document.getElementById('input-duration').value = entityData.duration || '';
+
+            if (type === 'SEASON') document.getElementById('input-number').value = entityData.seasonNumber;
+            if (type === 'EPISODE') document.getElementById('input-number').value = entityData.episodeNumber;
+
+            if ((type === 'SEASON' || type === 'EPISODE')) document.getElementById('input-number').disabled = true;
+        } else {
+            document.getElementById('input-number').disabled = false;
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('crud-modal').classList.remove('open');
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        const type = document.getElementById('entity-type').value;
+        const id = document.getElementById('entity-id').value;
+        const parentId = document.getElementById('parent-id').value;
+        const isUpdate = !!id;
+
+        const body = {
+            title: document.getElementById('input-title').value,
+            description: document.getElementById('input-description').value
         };
 
-        try {
-            document.getElementById('start-upload-btn').disabled = true;
-            showProgressContainer(true);
-            updateProgress(0, 'Initiating upload...');
+        if (type === 'MOVIE' || type === 'SERIES') body.year = parseInt(document.getElementById('input-year').value) || null;
+        if (type === 'MOVIE' || type === 'EPISODE') body.duration = parseInt(document.getElementById('input-duration').value) || null;
 
-            const response = await fetch(`${API_BASE}/files/upload`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(uploadData)
-            });
+        let url = '';
+        let method = isUpdate ? 'PUT' : 'POST';
 
-            if (!response.ok) {
-                throw new Error(`Failed to initiate upload: ${response.statusText}`);
+        if (type === 'MOVIE') {
+            url = isUpdate ? `/movies/${id}` : '/movies';
+        } else if (type === 'SERIES') {
+            url = isUpdate ? `/series/${id}` : '/series';
+        } else if (type === 'SEASON') {
+            if (!isUpdate) {
+                body.seriesId = parentId;
+                body.seasonNumber = parseInt(document.getElementById('input-number').value);
+                url = `/series/${parentId}/seasons`;
+            } else {
+                url = `/series/seasons/${id}`;
             }
-
-            const uploadSession = await response.json();
-            showResponse('upload-response', uploadSession);
-
-            await uploadFileToPresignedUrl(selectedFile, uploadSession.presignedUrl);
-
-            updateProgress(100, 'Upload completed successfully!');
-
-            setTimeout(() => {
-                resetUploadForm();
-            }, 3000);
-
-        } catch (error) {
-            console.error('Upload error:', error);
-            showResponse('upload-response', {error: error.message}, true);
-            document.getElementById('start-upload-btn').disabled = false;
-            showProgressContainer(false);
-        }
-    }
-
-    async function uploadFileToPresignedUrl(file, presignedUrl) {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const progress = Math.round((e.loaded / e.total) * 90) + 5; // 5-95%
-                    updateProgress(progress, `Uploading... ${(e.loaded / (1024 * 1024)).toFixed(1)} MB / ${(e.total / (1024 * 1024)).toFixed(1)} MB`);
-                }
-            };
-
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    updateProgress(95, 'Upload completed, processing...');
-                    resolve();
-                } else {
-                    reject(new Error(`Upload failed with status ${xhr.status}`));
-                }
-            };
-
-            xhr.onerror = () => reject(new Error('Network error during upload'));
-
-            xhr.open('PUT', presignedUrl);
-            xhr.setRequestHeader('Content-Type', file.type);
-            xhr.send(file);
-        });
-    }
-
-    function updateProgress(percent, message) {
-        const progressFill = document.getElementById('upload-progress-fill');
-        const uploadStatus = document.getElementById('upload-status');
-
-        progressFill.style.width = `${percent}%`;
-        progressFill.textContent = `${percent}%`;
-        uploadStatus.textContent = message;
-    }
-
-    function showProgressContainer(show) {
-        const container = document.getElementById('upload-progress-container');
-        container.style.display = show ? 'block' : 'none';
-    }
-
-    function resetUploadForm() {
-        selectedFile = null;
-        document.getElementById('upload-file').value = '';
-        document.getElementById('upload-text').textContent = '📁 Click to select file or drag and drop';
-        document.getElementById('start-upload-btn').disabled = true;
-        showProgressContainer(false);
-    }
-
-    async function getMovieFiles() {
-        const movieId = document.getElementById('get-movie-files-id').value;
-        if (!movieId) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/files/movie/${movieId}`);
-            const result = await response.json();
-            showResponse('files-response', result, !response.ok);
-        } catch (error) {
-            showResponse('files-response', {error: error.message}, true);
-        }
-    }
-
-    async function getEpisodeFiles() {
-        const episodeId = document.getElementById('get-episode-files-id').value;
-        if (!episodeId) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/files/episode/${episodeId}`);
-            const result = await response.json();
-            showResponse('files-response', result, !response.ok);
-        } catch (error) {
-            showResponse('files-response', {error: error.message}, true);
-        }
-    }
-
-    async function searchAllContent() {
-        const title = document.getElementById('search-title').value;
-        const year = document.getElementById('search-year').value;
-        const page = document.getElementById('search-page').value;
-        const size = document.getElementById('search-size').value;
-
-        const params = new URLSearchParams({
-            page: page,
-            size: size,
-            ...(title && {title}),
-            ...(year && {year})
-        });
-
-        try {
-            const response = await fetch(`${API_BASE}/content/search?${params}`);
-            const result = await response.json();
-            showResponse('search-all-response', result, !response.ok);
-        } catch (error) {
-            showResponse('search-all-response', {error: error.message}, true);
-        }
-    }
-
-    async function searchMovies() {
-        const title = document.getElementById('movie-search-title').value;
-        const minDuration = document.getElementById('movie-search-min-duration').value;
-        const maxDuration = document.getElementById('movie-search-max-duration').value;
-
-        const params = new URLSearchParams({
-            page: 0,
-            size: 20,
-            ...(title && {title}),
-            ...(minDuration && {minDuration}),
-            ...(maxDuration && {maxDuration})
-        });
-
-        try {
-            const response = await fetch(`${API_BASE}/content/movies/search?${params}`);
-            const result = await response.json();
-            showResponse('movie-search-response', result, !response.ok);
-        } catch (error) {
-            showResponse('movie-search-response', {error: error.message}, true);
-        }
-    }
-
-    async function searchSeries() {
-        const title = document.getElementById('series-search-title').value;
-        const minSeasons = document.getElementById('series-search-min-seasons').value;
-        const maxSeasons = document.getElementById('series-search-max-seasons').value;
-
-        const params = new URLSearchParams({
-            page: 0,
-            size: 20,
-            ...(title && {title}),
-            ...(minSeasons && {minSeasons}),
-            ...(maxSeasons && {maxSeasons})
-        });
-
-        try {
-            const response = await fetch(`${API_BASE}/content/series/search?${params}`);
-            const result = await response.json();
-            showResponse('series-search-response', result, !response.ok);
-        } catch (error) {
-            showResponse('series-search-response', {error: error.message}, true);
-        }
-    }
-
-    async function getContentStats() {
-        try {
-            const response = await fetch(`${API_BASE}/content/stats`);
-            const result = await response.json();
-            showResponse('stats-recent-response', result, !response.ok);
-        } catch (error) {
-            showResponse('stats-recent-response', {error: error.message}, true);
-        }
-    }
-
-    async function getRecentContent() {
-        const limit = document.getElementById('recent-limit').value || 10;
-
-        try {
-            const response = await fetch(`${API_BASE}/content/recent?limit=${limit}`);
-            const result = await response.json();
-            showResponse('stats-recent-response', result, !response.ok);
-        } catch (error) {
-            showResponse('stats-recent-response', {error: error.message}, true);
-        }
-    }
-
-    async function checkWebhookHealth() {
-        try {
-            const response = await fetch(`${API_BASE}/webhooks/minio/health`);
-            const result = await response.json();
-            showResponse('webhook-health-response', result, !response.ok);
-        } catch (error) {
-            showResponse('webhook-health-response', {error: error.message}, true);
-        }
-    }
-
-    async function testWebhook() {
-        let payload = {};
-        const payloadText = document.getElementById('webhook-payload').value.trim();
-
-        if (payloadText) {
-            try {
-                payload = JSON.parse(payloadText);
-            } catch (error) {
-                alert('Invalid JSON payload');
-                return;
+        } else if (type === 'EPISODE') {
+            if (!isUpdate) {
+                body.seasonId = parentId;
+                body.episodeNumber = parseInt(document.getElementById('input-number').value);
+                url = `/series/seasons/${parentId}/episodes`;
+            } else {
+                url = `/series/episodes/${id}`;
             }
         }
 
         try {
-            const response = await fetch(`${API_BASE}/webhooks/minio/test`, {
-                method: 'POST',
+            const res = await fetch(API_BASE + url, {
+                method: method,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
+                body: JSON.stringify(body)
             });
 
-            const result = await response.json();
-            showResponse('webhook-test-response', result, !response.ok);
-        } catch (error) {
-            showResponse('webhook-test-response', {error: error.message}, true);
+            if (!res.ok) throw new Error((await res.json()).message || "Save failed");
+
+            closeModal();
+            if (type === 'MOVIE') loadMovies();
+            else if (type === 'SERIES') loadSeries();
+            else if (type === 'SEASON' || type === 'EPISODE') {
+                alert("Saved. Please click 'Show/Hide' on the parent to refresh the list.");
+            }
+
+        } catch (err) {
+            alert("Error: " + err.message);
         }
     }
 
-    async function sendMinIONotification() {
-        let payload = {};
-        const payloadText = document.getElementById('minio-notification').value.trim();
+    async function deleteEntity(endpointType, id) {
+        if (!confirm("Are you sure? This will delete all files associated with this entity.")) return;
+        try {
+            const res = await fetch(`${API_BASE}/${endpointType}/${id}`, {method: 'DELETE'});
+            if (res.ok) {
+                if (endpointType === 'movies') loadMovies();
+                else if (endpointType === 'series') loadSeries();
+                else alert("Deleted. Please refresh the parent list.");
+            } else {
+                alert("Delete failed");
+            }
+        } catch (e) {
+            alert("Error deleting");
+        }
+    }
 
-        if (!payloadText) {
-            payload = {
-                "Records": [{
-                    "eventName": "s3:ObjectCreated:Put",
-                    "s3": {
-                        "bucket": {"name": "movie-storage"},
-                        "object": {"key": "test-object.mp4"}
+    function changeMoviePage(delta) {
+        if (moviePage + delta < 0) return;
+        moviePage += delta;
+        loadMovies();
+    }
+
+    function handleDrop(e, type, id) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('dragover');
+
+        const files = e.dataTransfer.files;
+        if (files.length === 0) return;
+
+        let category = 'VIDEO';
+        if (type === 'MOVIE') category = document.getElementById(`cat-movie-${id}`).value;
+        if (type === 'EPISODE') category = document.getElementById(`cat-ep-${id}`).value;
+        if (type === 'SERIES') category = document.getElementById(`cat-series-${id}`).value;
+
+        for (let i = 0; i < files.length; i++) {
+            addToQueue(files[i], type, id, category);
+        }
+        document.getElementById('upload-manager').classList.remove('minimized');
+    }
+
+    function addToQueue(file, type, id, category) {
+        uploadQueue.push({
+            id: 'task-' + Date.now() + Math.random(),
+            file, type, entityId: id, category,
+            status: 'PENDING', progress: 0
+        });
+        renderQueue();
+    }
+
+    function renderQueue() {
+        const c = document.getElementById('upload-queue');
+        document.getElementById('active-count').innerText = uploadQueue.length;
+        if (uploadQueue.length === 0) {
+            c.innerHTML = '<div style="text-align:center; color:#a0aec0; margin-top:20px;">No uploads</div>';
+            return;
+        }
+
+        c.innerHTML = '';
+        uploadQueue.forEach(task => {
+            const color = task.status === 'COMPLETED' ? 'var(--success)' : (task.status === 'ERROR' ? '#e53e3e' : 'var(--primary)');
+            c.innerHTML += `
+                <div class="upload-task">
+                    <div style="display:flex; justify-content:space-between;">
+                        <b>${task.file.name}</b>
+                        <span style="color:${color}; font-size:0.75rem;">${task.status}</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width:${task.progress}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function processUploadQueue() {
+        if (activeUploads >= 3) return;
+        const task = uploadQueue.find(t => t.status === 'PENDING');
+        if (!task) return;
+
+        task.status = 'UPLOADING';
+        activeUploads++;
+        renderQueue();
+
+        startUpload(task).finally(() => {
+            activeUploads--;
+            renderQueue();
+        });
+    }
+
+    async function startUpload(task) {
+        try {
+            const initRes = await fetch(`${API_BASE}/files/upload`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    originalFilename: task.file.name,
+                    mimeType: task.file.type || 'application/octet-stream',
+                    fileSize: task.file.size,
+                    entityId: task.entityId,
+                    entityType: task.type,
+                    category: task.category,
+                    // If category is POSTER (Cover/Thumb), assume primary for simplicity in this demo
+                    isPrimary: task.category === 'POSTER'
+                })
+            });
+            if (!initRes.ok) throw new Error("Init failed");
+            const session = await initRes.json();
+
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', session.presignedUrl);
+                xhr.upload.onprogress = e => {
+                    if (e.lengthComputable) {
+                        task.progress = (e.loaded / e.total) * 100;
+                        renderQueue();
                     }
-                }]
-            };
-        } else {
-            try {
-                payload = JSON.parse(payloadText);
-            } catch (error) {
-                alert('Invalid JSON payload');
-                return;
-            }
-        }
-
-        try {
-            const response = await fetch(`${API_BASE}/webhooks/minio/notification`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
+                };
+                xhr.onload = () => xhr.status === 200 ? resolve() : reject();
+                xhr.onerror = () => reject();
+                xhr.send(task.file);
             });
 
-            const result = await response.json();
-            showResponse('minio-notification-response', result, !response.ok);
-        } catch (error) {
-            showResponse('minio-notification-response', {error: error.message}, true);
+            await fetch(`${API_BASE}/webhooks/minio/notification`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    "Records": [{
+                        "eventName": "s3:ObjectCreated:Put",
+                        "s3": {"bucket": {"name": "movie-storage"}, "object": {"key": session.minioObjectKey}}
+                    }]
+                })
+            });
+
+            task.status = 'COMPLETED';
+            task.progress = 100;
+        } catch (e) {
+            console.error(e);
+            task.status = 'ERROR';
         }
     }
 </script>

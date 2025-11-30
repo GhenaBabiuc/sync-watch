@@ -26,8 +26,3 @@ minio:
   bucket: movie-storage
   access-key: minio_access_key
   secret-key: minio_secret_key
-
-logging:
-  level:
-    com.example.storageservice: DEBUG
-    org.springframework.web.multipart: DEBUG

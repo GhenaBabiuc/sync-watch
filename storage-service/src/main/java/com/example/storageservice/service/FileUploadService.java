@@ -1,21 +1,33 @@
 package com.example.storageservice.service;
 
+import com.example.storageservice.config.MinioProperties;
+import com.example.storageservice.model.Episode;
+import com.example.storageservice.model.EpisodeMedia;
+import com.example.storageservice.model.MediaFile;
+import com.example.storageservice.model.Movie;
+import com.example.storageservice.model.MovieMedia;
+import com.example.storageservice.model.Season;
+import com.example.storageservice.model.SeasonMedia;
+import com.example.storageservice.model.Series;
+import com.example.storageservice.model.SeriesMedia;
+import com.example.storageservice.model.UploadStatus;
+import com.example.storageservice.model.dto.FileUploadRequest;
+import com.example.storageservice.model.dto.FileUploadResponse;
+import com.example.storageservice.repository.EpisodeRepository;
+import com.example.storageservice.repository.EpisodesMediaRepository;
+import com.example.storageservice.repository.MediaFileRepository;
+import com.example.storageservice.repository.MovieRepository;
+import com.example.storageservice.repository.MoviesMediaRepository;
+import com.example.storageservice.repository.SeasonRepository;
+import com.example.storageservice.repository.SeasonsMediaRepository;
+import com.example.storageservice.repository.SeriesMediaRepository;
+import com.example.storageservice.repository.SeriesRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
+import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.example.storageservice.config.MinioProperties;
-import com.example.storageservice.exception.MovieNotFoundException;
-import com.example.storageservice.model.EpisodeFile;
-import com.example.storageservice.model.MovieFile;
-import com.example.storageservice.model.dto.FileInfoDto;
-import com.example.storageservice.model.dto.FileUploadRequest;
-import com.example.storageservice.model.dto.FileUploadResponse;
-import com.example.storageservice.repository.EpisodeFileRepository;
-import com.example.storageservice.repository.EpisodeRepository;
-import com.example.storageservice.repository.MovieFileRepository;
-import com.example.storageservice.repository.MovieRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -34,28 +46,53 @@ public class FileUploadService {
 
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
+
+    private final MediaFileRepository mediaFileRepository;
     private final MovieRepository movieRepository;
     private final EpisodeRepository episodeRepository;
-    private final MovieFileRepository movieFileRepository;
-    private final EpisodeFileRepository episodeFileRepository;
+    private final SeriesRepository seriesRepository;
+    private final SeasonRepository seasonRepository;
+
+    private final MoviesMediaRepository moviesMediaRepository;
+    private final EpisodesMediaRepository episodesMediaRepository;
+    private final SeriesMediaRepository seriesMediaRepository;
+    private final SeasonsMediaRepository seasonsMediaRepository;
 
     private static final long UPLOAD_EXPIRY_HOURS = 24;
 
     @Transactional
     public FileUploadResponse initiateFileUpload(FileUploadRequest request) {
-        validateUploadRequest(request);
+        validateEntityExists(request);
 
         String uploadSessionId = UUID.randomUUID().toString();
         String objectKey = generateObjectKey(request);
 
         try {
-            String presignedUrl = generatePresignedUrl(objectKey);
+            String presignedUrl = minioClient.getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .method(Method.PUT)
+                            .bucket(minioProperties.getBucket())
+                            .object(objectKey)
+                            .expiry(Math.toIntExact(UPLOAD_EXPIRY_HOURS), TimeUnit.HOURS)
+                            .build());
+
             LocalDateTime expiresAt = LocalDateTime.now().plusHours(UPLOAD_EXPIRY_HOURS);
 
-            switch (request.getEntityType()) {
-                case MOVIE -> createMovieFileRecord(request, uploadSessionId, objectKey, presignedUrl, expiresAt);
-                case EPISODE -> createEpisodeFileRecord(request, uploadSessionId, objectKey, presignedUrl, expiresAt);
-            }
+            MediaFile mediaFile = MediaFile.builder()
+                    .originalFilename(request.getOriginalFilename())
+                    .contentType(request.getMimeType())
+                    .fileSize(request.getFileSize())
+                    .minioBucket(minioProperties.getBucket())
+                    .minioObjectKey(objectKey)
+                    .uploadStatus(UploadStatus.PENDING)
+                    .uploadSessionId(uploadSessionId)
+                    .presignedUrl(presignedUrl)
+                    .presignedExpiresAt(expiresAt)
+                    .build();
+
+            mediaFile = mediaFileRepository.save(mediaFile);
+
+            linkMediaToEntity(mediaFile, request);
 
             log.info("File upload initiated: {} for {} ID: {}, uploadSessionId: {}",
                     request.getOriginalFilename(), request.getEntityType(),
@@ -69,7 +106,7 @@ public class FileUploadService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Error initiating file upload for {}: {}", request.getOriginalFilename(), e.getMessage(), e);
+            log.error("Error initiating file upload: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to initiate file upload", e);
         }
     }
@@ -79,138 +116,112 @@ public class FileUploadService {
     public void handleFileUploadCompletion(String bucket, String objectKey) {
         log.info("Processing file upload completion for object: {}", objectKey);
 
-        movieFileRepository.findByMinioLocation(bucket, objectKey)
-                .ifPresentOrElse(this::markMovieFileAsCompleted, () ->
-                        episodeFileRepository.findByMinioLocation(bucket, objectKey)
-                                .ifPresentOrElse(this::markEpisodeFileAsCompleted, () ->
-                                        log.warn("No file record found for completed upload: {}", objectKey)));
-    }
-
-    public List<FileInfoDto> getFilesByMovie(Long movieId) {
-        List<MovieFile> files = movieFileRepository.findByMovieId(movieId);
-        return files.stream().map(this::mapMovieFileToDto).toList();
-    }
-
-    public List<FileInfoDto> getFilesByEpisode(Long episodeId) {
-        List<EpisodeFile> files = episodeFileRepository.findByEpisodeId(episodeId);
-        return files.stream().map(this::mapEpisodeFileToDto).toList();
+        mediaFileRepository.findByMinioLocation(bucket, objectKey)
+                .ifPresentOrElse(file -> {
+                    file.setUploadStatus(UploadStatus.COMPLETED);
+                    file.setPresignedUrl(null);
+                    file.setPresignedExpiresAt(null);
+                    mediaFileRepository.save(file);
+                    log.info("Media file upload completed: {} (ID: {})", file.getOriginalFilename(), file.getId());
+                }, () -> log.warn("No media file record found for key: {}", objectKey));
     }
 
     @Transactional
-    public void deleteFile(Long fileId, FileUploadRequest.EntityType entityType) {
-        switch (entityType) {
-            case MOVIE -> {
-                MovieFile file = movieFileRepository.findById(fileId)
-                        .orElseThrow(() -> new MovieNotFoundException("Movie file not found: " + fileId));
-                deleteFileFromStorage(file.getMinioObjectKey());
-                movieFileRepository.delete(file);
-                log.info("Movie file deleted: {} ({})", file.getOriginalFilename(), fileId);
-            }
-            case EPISODE -> {
-                EpisodeFile file = episodeFileRepository.findById(fileId)
-                        .orElseThrow(() -> new MovieNotFoundException("Episode file not found: " + fileId));
-                deleteFileFromStorage(file.getMinioObjectKey());
-                episodeFileRepository.delete(file);
-                log.info("Episode file deleted: {} ({})", file.getOriginalFilename(), fileId);
-            }
+    public void deleteFile(Long mediaFileId) {
+        MediaFile file = mediaFileRepository.findById(mediaFileId)
+                .orElseThrow(() -> new IllegalArgumentException("Media file not found: " + mediaFileId));
+
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(file.getMinioBucket())
+                            .object(file.getMinioObjectKey())
+                            .build());
+            log.debug("File deleted from storage: {}", file.getMinioObjectKey());
+        } catch (Exception e) {
+            log.error("Error deleting file from storage: {}", e.getMessage());
         }
+
+        mediaFileRepository.delete(file);
+        log.info("Media file record deleted: {}", mediaFileId);
     }
 
     @Scheduled(fixedRate = 3600000)
     @Transactional
     public void cleanupExpiredPresignedUrls() {
         LocalDateTime now = LocalDateTime.now();
-        List<MovieFile.UploadStatus> movieStatuses = Arrays.asList(
-                MovieFile.UploadStatus.PENDING, MovieFile.UploadStatus.UPLOADING);
-        List<EpisodeFile.UploadStatus> episodeStatuses = Arrays.asList(
-                EpisodeFile.UploadStatus.PENDING, EpisodeFile.UploadStatus.UPLOADING);
+        List<UploadStatus> statuses = Arrays.asList(UploadStatus.PENDING, UploadStatus.UPLOADING);
 
-        List<MovieFile> expiredMovieFiles = movieFileRepository.findExpiredPresignedUrls(movieStatuses, now);
-        List<EpisodeFile> expiredEpisodeFiles = episodeFileRepository.findExpiredPresignedUrls(episodeStatuses, now);
+        List<MediaFile> expiredFiles = mediaFileRepository.findExpiredPresignedUrls(statuses, now);
 
-        for (MovieFile file : expiredMovieFiles) {
-            file.setUploadStatus(MovieFile.UploadStatus.FAILED);
+        for (MediaFile file : expiredFiles) {
+            file.setUploadStatus(UploadStatus.FAILED);
             file.setPresignedUrl(null);
             file.setPresignedExpiresAt(null);
-            movieFileRepository.save(file);
+            mediaFileRepository.save(file);
         }
 
-        for (EpisodeFile file : expiredEpisodeFiles) {
-            file.setUploadStatus(EpisodeFile.UploadStatus.FAILED);
-            file.setPresignedUrl(null);
-            file.setPresignedExpiresAt(null);
-            episodeFileRepository.save(file);
-        }
-
-        int totalExpired = expiredMovieFiles.size() + expiredEpisodeFiles.size();
-        if (totalExpired > 0) {
-            log.info("Cleaned up {} expired presigned URLs", totalExpired);
+        if (!expiredFiles.isEmpty()) {
+            log.info("Cleaned up {} expired media files", expiredFiles.size());
         }
     }
 
-    private void validateUploadRequest(FileUploadRequest request) {
+    private void validateEntityExists(FileUploadRequest request) {
+        boolean exists = switch (request.getEntityType()) {
+            case MOVIE -> movieRepository.existsById(request.getEntityId());
+            case EPISODE -> episodeRepository.existsById(request.getEntityId());
+            case SERIES -> seriesRepository.existsById(request.getEntityId());
+            case SEASON -> seasonRepository.existsById(request.getEntityId());
+        };
+
+        if (!exists) {
+            throw new IllegalArgumentException(request.getEntityType() + " not found: " + request.getEntityId());
+        }
+    }
+
+    private void linkMediaToEntity(MediaFile mediaFile, FileUploadRequest request) {
         switch (request.getEntityType()) {
             case MOVIE -> {
-                if (!movieRepository.existsById(request.getEntityId())) {
-                    throw new IllegalArgumentException("Movie not found: " + request.getEntityId());
-                }
-
-                if (movieFileRepository.existsByMovieIdAndFileType(
-                        request.getEntityId(), request.getMovieFileType())) {
-                    throw new IllegalArgumentException("File of type " + request.getFileType() +
-                            " already exists for movie " + request.getEntityId());
-                }
+                Movie movie = movieRepository.getReferenceById(request.getEntityId());
+                MovieMedia link = MovieMedia.builder()
+                        .movie(movie)
+                        .mediaFile(mediaFile)
+                        .category(request.getCategory())
+                        .isPrimary(request.isPrimary())
+                        .build();
+                moviesMediaRepository.save(link);
             }
             case EPISODE -> {
-                if (!episodeRepository.existsById(request.getEntityId())) {
-                    throw new IllegalArgumentException("Episode not found: " + request.getEntityId());
-                }
-
-                if (episodeFileRepository.existsByEpisodeIdAndFileType(
-                        request.getEntityId(), request.getEpisodeFileType())) {
-                    throw new IllegalArgumentException("File of type " + request.getFileType() +
-                            " already exists for episode " + request.getEntityId());
-                }
+                Episode episode = episodeRepository.getReferenceById(request.getEntityId());
+                EpisodeMedia link = EpisodeMedia.builder()
+                        .episode(episode)
+                        .mediaFile(mediaFile)
+                        .category(request.getCategory())
+                        .isPrimary(request.isPrimary())
+                        .build();
+                episodesMediaRepository.save(link);
+            }
+            case SERIES -> {
+                Series series = seriesRepository.getReferenceById(request.getEntityId());
+                SeriesMedia link = SeriesMedia.builder()
+                        .series(series)
+                        .mediaFile(mediaFile)
+                        .category(request.getCategory())
+                        .isPrimary(request.isPrimary())
+                        .build();
+                seriesMediaRepository.save(link);
+            }
+            case SEASON -> {
+                Season season = seasonRepository.getReferenceById(request.getEntityId());
+                SeasonMedia link = SeasonMedia.builder()
+                        .season(season)
+                        .mediaFile(mediaFile)
+                        .category(request.getCategory())
+                        .isPrimary(request.isPrimary())
+                        .build();
+                seasonsMediaRepository.save(link);
             }
         }
-
-        validateFileConstraints(request);
-    }
-
-    private void validateFileConstraints(FileUploadRequest request) {
-        switch (request.getFileType().toLowerCase()) {
-            case "video" -> {
-                if (!isValidVideoFile(request.getOriginalFilename(), request.getMimeType())) {
-                    throw new IllegalArgumentException("Invalid video file format");
-                }
-                if (request.getFileSize() > 20L * 1024 * 1024 * 1024) { // 20GB
-                    throw new IllegalArgumentException("Video file size exceeds maximum limit of 20GB");
-                }
-            }
-            case "cover" -> {
-                if (!isValidImageFile(request.getOriginalFilename(), request.getMimeType())) {
-                    throw new IllegalArgumentException("Invalid image file format");
-                }
-                if (request.getFileSize() > 10L * 1024 * 1024) { // 10MB
-                    throw new IllegalArgumentException("Image file size exceeds maximum limit of 10MB");
-                }
-            }
-            default -> throw new IllegalArgumentException("Unsupported file type: " + request.getFileType());
-        }
-    }
-
-    private boolean isValidVideoFile(String filename, String mimeType) {
-        if (filename == null || mimeType == null) return false;
-        String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-        List<String> allowedExtensions = Arrays.asList("mp4", "avi", "mkv", "mov", "wmv", "flv", "webm");
-        return allowedExtensions.contains(extension) || mimeType.startsWith("video/");
-    }
-
-    private boolean isValidImageFile(String filename, String mimeType) {
-        if (filename == null || mimeType == null) return false;
-        String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-        List<String> allowedExtensions = Arrays.asList("jpg", "jpeg", "png", "webp");
-        return allowedExtensions.contains(extension) || mimeType.startsWith("image/");
     }
 
     private String generateObjectKey(FileUploadRequest request) {
@@ -219,144 +230,11 @@ public class FileUploadService {
             extension = request.getOriginalFilename().substring(request.getOriginalFilename().lastIndexOf("."));
         }
 
-        String basePath = switch (request.getEntityType()) {
-            case MOVIE -> "movies/" + request.getEntityId() + "/";
-            case EPISODE -> "episodes/" + request.getEntityId() + "/";
-        };
-
-        String fileTypePath = request.getFileType().toLowerCase() + "/";
-
-        return basePath + fileTypePath + UUID.randomUUID() + extension;
-    }
-
-    private String generatePresignedUrl(String objectKey) throws Exception {
-        return minioClient.getPresignedObjectUrl(
-                GetPresignedObjectUrlArgs.builder()
-                        .method(Method.PUT)
-                        .bucket(minioProperties.getBucket())
-                        .object(objectKey)
-                        .expiry(Math.toIntExact(UPLOAD_EXPIRY_HOURS), TimeUnit.HOURS)
-                        .build());
-    }
-
-    private void createMovieFileRecord(FileUploadRequest request, String uploadSessionId,
-                                       String objectKey, String presignedUrl, LocalDateTime expiresAt) {
-        MovieFile movieFile = MovieFile.builder()
-                .movieId(request.getEntityId())
-                .fileType(request.getMovieFileType())
-                .originalFilename(request.getOriginalFilename())
-                .minioBucket(minioProperties.getBucket())
-                .minioObjectKey(objectKey)
-                .fileSize(request.getFileSize())
-                .mimeType(request.getMimeType())
-                .uploadStatus(MovieFile.UploadStatus.PENDING)
-                .uploadSessionId(uploadSessionId)
-                .presignedUrl(presignedUrl)
-                .presignedExpiresAt(expiresAt)
-                .build();
-
-        movieFileRepository.save(movieFile);
-    }
-
-    private void createEpisodeFileRecord(FileUploadRequest request, String uploadSessionId,
-                                         String objectKey, String presignedUrl, LocalDateTime expiresAt) {
-        EpisodeFile episodeFile = EpisodeFile.builder()
-                .episodeId(request.getEntityId())
-                .fileType(request.getEpisodeFileType())
-                .originalFilename(request.getOriginalFilename())
-                .minioBucket(minioProperties.getBucket())
-                .minioObjectKey(objectKey)
-                .fileSize(request.getFileSize())
-                .mimeType(request.getMimeType())
-                .uploadStatus(EpisodeFile.UploadStatus.PENDING)
-                .uploadSessionId(uploadSessionId)
-                .presignedUrl(presignedUrl)
-                .presignedExpiresAt(expiresAt)
-                .build();
-
-        episodeFileRepository.save(episodeFile);
-    }
-
-    private void markMovieFileAsCompleted(MovieFile file) {
-        file.setUploadStatus(MovieFile.UploadStatus.COMPLETED);
-        file.setCompletedAt(LocalDateTime.now());
-        file.setPresignedUrl(null);
-        file.setPresignedExpiresAt(null);
-        movieFileRepository.save(file);
-        log.info("Movie file upload completed: {} for movie {}", file.getOriginalFilename(), file.getMovieId());
-    }
-
-    private void markEpisodeFileAsCompleted(EpisodeFile file) {
-        file.setUploadStatus(EpisodeFile.UploadStatus.COMPLETED);
-        file.setCompletedAt(LocalDateTime.now());
-        file.setPresignedUrl(null);
-        file.setPresignedExpiresAt(null);
-        episodeFileRepository.save(file);
-        log.info("Episode file upload completed: {} for episode {}", file.getOriginalFilename(), file.getEpisodeId());
-    }
-
-    private void deleteFileFromStorage(String objectKey) {
-        try {
-            minioClient.removeObject(
-                    io.minio.RemoveObjectArgs.builder()
-                            .bucket(minioProperties.getBucket())
-                            .object(objectKey)
-                            .build());
-            log.debug("File deleted from storage: {}", objectKey);
-        } catch (Exception e) {
-            log.error("Error deleting file from storage {}: {}", objectKey, e.getMessage(), e);
-            throw new RuntimeException("Error deleting file from storage: " + objectKey, e);
-        }
-    }
-
-    private FileInfoDto mapMovieFileToDto(MovieFile file) {
-        return FileInfoDto.builder()
-                .id(file.getId())
-                .fileType(file.getFileType().name())
-                .originalFilename(file.getOriginalFilename())
-                .fileSize(file.getFileSize())
-                .mimeType(file.getMimeType())
-                .uploadStatus(file.getUploadStatus().name())
-                .uploadSessionId(file.getUploadSessionId())
-                .createdAt(file.getCreatedAt())
-                .completedAt(file.getCompletedAt())
-                .downloadUrl(generateDownloadUrl(file.getMovieId(), file.getFileType(), "movie"))
-                .build();
-    }
-
-    private FileInfoDto mapEpisodeFileToDto(EpisodeFile file) {
-        return FileInfoDto.builder()
-                .id(file.getId())
-                .fileType(file.getFileType().name())
-                .originalFilename(file.getOriginalFilename())
-                .fileSize(file.getFileSize())
-                .mimeType(file.getMimeType())
-                .uploadStatus(file.getUploadStatus().name())
-                .uploadSessionId(file.getUploadSessionId())
-                .createdAt(file.getCreatedAt())
-                .completedAt(file.getCompletedAt())
-                .downloadUrl(generateDownloadUrl(file.getEpisodeId(), file.getFileType(), "episode"))
-                .build();
-    }
-
-    private String generateDownloadUrl(Long entityId, Enum<?> fileType, String entityType) {
-        String publicUrl = "http://localhost:8081/api";
-        if ("COVER".equals(fileType.name())) {
-            if ("movie".equals(entityType)) {
-                return publicUrl + "/stream/movies/" + entityId + "/cover";
-            } else {
-                return publicUrl + "/stream/episodes/" + entityId + "/cover";
-            }
-        }
-
-        if ("VIDEO".equals(fileType.name())) {
-            if ("movie".equals(entityType)) {
-                return publicUrl + "/stream/movies/" + entityId;
-            } else {
-                return publicUrl + "/stream/episodes/" + entityId;
-            }
-        }
-
-        return null;
+        return String.format("%ss/%d/%s/%s%s",
+                request.getEntityType().name().toLowerCase(),
+                request.getEntityId(),
+                request.getCategory().name().toLowerCase(),
+                UUID.randomUUID(),
+                extension);
     }
 }

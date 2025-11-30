@@ -22,20 +22,5 @@ public class SeriesDto {
     private Integer totalSeasons;
     private Integer totalEpisodes;
     private List<SeasonDto> seasons;
-
-    public String getCoverImageUrl() {
-        if (seasons != null && !seasons.isEmpty()) {
-            for (SeasonDto season : seasons) {
-                if (season.getEpisodes() != null && !season.getEpisodes().isEmpty()) {
-                    for (EpisodeDto episode : season.getEpisodes()) {
-                        FileInfoDto coverFile = episode.getCoverFile();
-                        if (coverFile != null && coverFile.getDownloadUrl() != null) {
-                            return coverFile.getDownloadUrl();
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
+    private List<MediaDto> mediaFiles;
 }

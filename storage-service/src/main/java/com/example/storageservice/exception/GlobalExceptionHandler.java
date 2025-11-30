@@ -1,5 +1,6 @@
 package com.example.storageservice.exception;
 
+import io.minio.errors.MinioException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,68 +22,16 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(MovieNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleMovieNotFoundException(MovieNotFoundException exception) {
-        log.error("Movie not found: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Movie Not Found")
-                .message(exception.getMessage())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
-    @ExceptionHandler(SeriesNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleSeriesNotFoundException(SeriesNotFoundException exception) {
-        log.error("Series not found: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Series Not Found")
-                .message(exception.getMessage())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
-    @ExceptionHandler(FileNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleFileNotFoundException(FileNotFoundException exception) {
-        log.error("File not found: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("File Not Found")
-                .message(exception.getMessage())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
         log.error("Validation error: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Validation Error")
-                .message(exception.getMessage())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation Error", exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorResponse> handleValidationExceptions(MethodArgumentNotValidException exception) {
         log.error("Method argument validation failed: ", exception);
-
         List<FieldError> fieldErrors = new ArrayList<>();
-
         exception.getBindingResult().getFieldErrors().forEach(error -> {
             fieldErrors.add(FieldError.builder()
                     .field(error.getField())
@@ -89,24 +39,19 @@ public class GlobalExceptionHandler {
                     .message(error.getDefaultMessage())
                     .build());
         });
-
-        ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ValidationErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Validation Failed")
                 .message("Request validation failed")
                 .fieldErrors(fieldErrors)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+                .build());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ValidationErrorResponse> handleConstraintViolationException(ConstraintViolationException exception) {
         log.error("Constraint violation: ", exception);
-
         List<FieldError> fieldErrors = new ArrayList<>();
-
         for (ConstraintViolation<?> violation : exception.getConstraintViolations()) {
             fieldErrors.add(FieldError.builder()
                     .field(violation.getPropertyPath().toString())
@@ -114,82 +59,67 @@ public class GlobalExceptionHandler {
                     .message(violation.getMessage())
                     .build());
         }
-
-        ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ValidationErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Constraint Violation")
                 .message("Request parameters validation failed")
                 .fieldErrors(fieldErrors)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+                .build());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException exception) {
         log.error("File size exceeded: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.PAYLOAD_TOO_LARGE.value())
-                .error("File Size Exceeded")
-                .message("The uploaded file exceeds the maximum allowed size")
-                .build();
-
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
-    }
-
-    @ExceptionHandler(UnsupportedFileTypeException.class)
-    public ResponseEntity<ErrorResponse> handleUnsupportedFileTypeException(UnsupportedFileTypeException exception) {
-        log.error("Unsupported file type: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Unsupported File Type")
-                .message(exception.getMessage())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        return buildErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE, "File Size Exceeded", "The uploaded file exceeds the maximum allowed size");
     }
 
     @ExceptionHandler(ClientAbortException.class)
     public void handleClientAbortException(ClientAbortException exception) {
-        log.debug("Client aborted request (normal for video streaming): {}", exception.getMessage());
+        log.debug("Client aborted request: {}", exception.getMessage());
     }
 
     @ExceptionHandler(AsyncRequestNotUsableException.class)
     public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException exception) {
-        log.debug("Async request not usable (normal for video streaming): {}", exception.getMessage());
+        log.debug("Async request not usable: {}", exception.getMessage());
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<ErrorResponse> handleIOException(IOException exception) {
+        if (exception.getMessage() != null && exception.getMessage().contains("Broken pipe")) {
+            log.debug("Broken pipe (client disconnected): {}", exception.getMessage());
+            return null;
+        }
+        log.error("IO Exception: ", exception);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "IO Error", "Error processing file stream");
+    }
+
+    @ExceptionHandler(MinioException.class)
+    public ResponseEntity<ErrorResponse> handleMinioException(MinioException exception) {
+        log.error("MinIO Storage Exception: ", exception);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Storage Error", "Error retrieving file from storage");
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException exception) {
         log.error("Runtime exception occurred: ", exception);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("An unexpected error occurred")
-                .build();
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception exception) {
         log.error("Unexpected exception occurred: ", exception);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred");
+    }
 
+    private ResponseEntity<ErrorResponse> buildErrorResponse(HttpStatus status, String error, String message) {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("An unexpected error occurred")
+                .status(status.value())
+                .error(error)
+                .message(message)
                 .build();
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        return ResponseEntity.status(status).body(errorResponse);
     }
 
     @lombok.Data
@@ -201,7 +131,6 @@ public class GlobalExceptionHandler {
         private int status;
         private String error;
         private String message;
-        private String path;
     }
 
     @lombok.Data

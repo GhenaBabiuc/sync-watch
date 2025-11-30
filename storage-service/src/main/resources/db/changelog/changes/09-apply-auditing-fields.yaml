@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 09-add-updated-at-to-seasons
+      author: gbabiuc
+      changes:
+        - addColumn:
+            tableName: seasons
+            columns:
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addNotNullConstraint:
+            tableName: seasons
+            columnName: updated_at
+
+  - changeSet:
+      id: 09-update-movie-files-timestamps
+      author: gbabiuc
+      changes:
+        - addColumn:
+            tableName: movie_files
+            columns:
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addNotNullConstraint:
+            tableName: movie_files
+            columnName: updated_at
+        - dropColumn:
+            tableName: movie_files
+            columnName: completed_at
+
+  - changeSet:
+      id: 09-update-episode-files-timestamps
+      author: gbabiuc
+      changes:
+        - addColumn:
+            tableName: episode_files
+            columns:
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addNotNullConstraint:
+            tableName: episode_files
+            columnName: updated_at
+        - dropColumn:
+            tableName: episode_files
+            columnName: completed_at

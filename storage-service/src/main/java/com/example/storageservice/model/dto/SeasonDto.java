@@ -19,7 +19,8 @@ public class SeasonDto {
     private String title;
     private String description;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private Integer totalEpisodes;
     private List<EpisodeDto> episodes;
-    private String seriesTitle;
+    private List<MediaDto> mediaFiles;
 }

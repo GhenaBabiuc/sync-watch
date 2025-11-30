@@ -1,0 +1,263 @@
+databaseChangeLog:
+  - changeSet:
+      id: 10-drop-legacy-file-tables
+      author: gbabiuc
+      changes:
+        - dropTable:
+            tableName: movie_files
+            cascadeConstraints: true
+        - dropTable:
+            tableName: episode_files
+            cascadeConstraints: true
+
+  - changeSet:
+      id: 10-create-central-media-files
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: media_files
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+              - column:
+                  name: content_type
+                  type: varchar(100)
+              - column:
+                  name: file_size
+                  type: bigint
+              - column:
+                  name: minio_bucket
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: minio_object_key
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_status
+                  type: varchar(20)
+                  defaultValue: 'PENDING'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_session_id
+                  type: varchar(100)
+              - column:
+                  name: presigned_url
+                  type: text
+              - column:
+                  name: presigned_expires_at
+                  type: timestamp
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: media_files
+            columnNames: minio_bucket, minio_object_key
+            constraintName: uq_media_files_object
+
+  - changeSet:
+      id: 10-create-movies-media-link
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: movies_media
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: movie_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: media_file_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_primary
+                  type: boolean
+                  defaultValueBoolean: false
+        - addForeignKeyConstraint:
+            baseTableName: movies_media
+            baseColumnNames: movie_id
+            referencedTableName: movies
+            referencedColumnNames: id
+            constraintName: fk_movies_media_movie
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: movies_media
+            baseColumnNames: media_file_id
+            referencedTableName: media_files
+            referencedColumnNames: id
+            constraintName: fk_movies_media_file
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 10-create-series-media-link
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: series_media
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: series_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: media_file_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_primary
+                  type: boolean
+                  defaultValueBoolean: false
+        - addForeignKeyConstraint:
+            baseTableName: series_media
+            baseColumnNames: series_id
+            referencedTableName: series
+            referencedColumnNames: id
+            constraintName: fk_series_media_series
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: series_media
+            baseColumnNames: media_file_id
+            referencedTableName: media_files
+            referencedColumnNames: id
+            constraintName: fk_series_media_file
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 10-create-seasons-media-link
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: seasons_media
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: season_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: media_file_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_primary
+                  type: boolean
+                  defaultValueBoolean: false
+        - addForeignKeyConstraint:
+            baseTableName: seasons_media
+            baseColumnNames: season_id
+            referencedTableName: seasons
+            referencedColumnNames: id
+            constraintName: fk_seasons_media_season
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: seasons_media
+            baseColumnNames: media_file_id
+            referencedTableName: media_files
+            referencedColumnNames: id
+            constraintName: fk_seasons_media_file
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 10-create-episodes-media-link
+      author: gbabiuc
+      changes:
+        - createTable:
+            tableName: episodes_media
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: episode_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: media_file_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_primary
+                  type: boolean
+                  defaultValueBoolean: false
+        - addForeignKeyConstraint:
+            baseTableName: episodes_media
+            baseColumnNames: episode_id
+            referencedTableName: episodes
+            referencedColumnNames: id
+            constraintName: fk_episodes_media_episode
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: episodes_media
+            baseColumnNames: media_file_id
+            referencedTableName: media_files
+            referencedColumnNames: id
+            constraintName: fk_episodes_media_file
+            onDelete: CASCADE
