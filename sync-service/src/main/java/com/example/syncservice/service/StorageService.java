@@ -1,11 +1,10 @@
 package com.example.syncservice.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.syncservice.model.Episode;
-import com.example.syncservice.model.FileInfo;
 import com.example.syncservice.model.Movie;
 import com.example.syncservice.model.Season;
 import com.example.syncservice.model.Series;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
@@ -15,6 +14,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,8 +25,7 @@ public class StorageService {
     private final RestTemplate restTemplate;
     private final String storageApiUrl;
 
-    public StorageService(RestTemplate restTemplate,
-                          @Value("${app.storage.api.url:http://localhost:8081/api}") String storageApiUrl) {
+    public StorageService(RestTemplate restTemplate, @Value("${app.storage.api.url:http://localhost:8081/api}") String storageApiUrl) {
         this.restTemplate = restTemplate;
         this.storageApiUrl = storageApiUrl;
         log.info("StorageService initialized with API URL: {}", storageApiUrl);
@@ -45,10 +44,7 @@ public class StorageService {
 
             if (response.getBody() != null && response.getBody().getContent() != null) {
                 List<Movie> movies = response.getBody().getContent();
-                movies.forEach(movie -> {
-                    movie.setStreamUrl(storageApiUrl + "/stream/movies/" + movie.getId());
-                    movie.setCoverUrl(getCoverUrl(movie.getFiles()));
-                });
+                movies.forEach(this::enrichMovieUrls);
                 log.info("Successfully fetched {} movies", movies.size());
                 return movies;
             }
@@ -68,9 +64,7 @@ public class StorageService {
 
             if (response.getBody() != null) {
                 Movie movie = response.getBody();
-                movie.setStreamUrl(storageApiUrl + "/stream/movies/" + movieId);
-                movie.setCoverUrl(getCoverUrl(movie.getFiles()));
-                log.info("Successfully fetched movie: {}", movie.getTitle());
+                enrichMovieUrls(movie);
                 return Optional.of(movie);
             }
             return Optional.empty();
@@ -92,28 +86,22 @@ public class StorageService {
             );
 
             if (response.getBody() != null && response.getBody().getContent() != null) {
-                List<Series> series = response.getBody().getContent();
+                List<Series> seriesList = response.getBody().getContent();
+                seriesList.forEach(this::enrichSeriesUrls);
 
-                series.forEach(s -> {
+                seriesList.forEach(s -> {
                     try {
                         List<Season> seasons = getSeasonsBySeries(s.getId());
                         if (!seasons.isEmpty()) {
-                            for (Season season : seasons) {
-                                List<Episode> episodes = getEpisodesBySeason(season.getId());
-                                season.setEpisodes(episodes);
-                                if (!episodes.isEmpty()) {
-                                    break;
-                                }
-                            }
                             s.setSeasons(seasons);
                         }
                     } catch (Exception e) {
-                        log.debug("Could not load seasons/episodes for series {}: {}", s.getId(), e.getMessage());
+                        log.debug("Could not lazy load seasons for series {}", s.getId());
                     }
                 });
 
-                log.info("Successfully fetched {} series", series.size());
-                return series;
+                log.info("Successfully fetched {} series", seriesList.size());
+                return seriesList;
             }
             return Collections.emptyList();
         } catch (RestClientException e) {
@@ -131,7 +119,7 @@ public class StorageService {
 
             if (response.getBody() != null) {
                 Series series = response.getBody();
-                log.info("Successfully fetched series: {}", series.getTitle());
+                enrichSeriesUrls(series);
                 return Optional.of(series);
             }
             return Optional.empty();
@@ -154,7 +142,6 @@ public class StorageService {
 
             if (response.getBody() != null && response.getBody().getContent() != null) {
                 List<Season> seasons = response.getBody().getContent();
-                log.info("Successfully fetched {} seasons for series {}", seasons.size(), seriesId);
                 return seasons;
             }
             return Collections.emptyList();
@@ -167,18 +154,14 @@ public class StorageService {
     public Optional<Season> getSeasonById(Long seasonId) {
         try {
             String url = storageApiUrl + "/series/seasons/" + seasonId;
-            log.debug("Fetching season {} from: {}", seasonId, url);
 
             ResponseEntity<Season> response = restTemplate.getForEntity(url, Season.class);
-
             if (response.getBody() != null) {
-                Season season = response.getBody();
-                log.info("Successfully fetched season: S{}", season.getSeasonNumber());
-                return Optional.of(season);
+                return Optional.of(response.getBody());
             }
             return Optional.empty();
         } catch (RestClientException e) {
-            log.error("Error fetching season {} from storage service: {}", seasonId, e.getMessage());
+            log.error("Error fetching season {}", seasonId, e);
             return Optional.empty();
         }
     }
@@ -196,11 +179,16 @@ public class StorageService {
 
             if (response.getBody() != null && response.getBody().getContent() != null) {
                 List<Episode> episodes = response.getBody().getContent();
-                episodes.forEach(episode -> {
-                    episode.setStreamUrl(storageApiUrl + "/stream/episodes/" + episode.getId());
-                    episode.setCoverUrl(getCoverUrl(episode.getFiles()));
+
+                Optional<Season> seasonOpt = getSeasonById(seasonId);
+                seasonOpt.ifPresent(season -> {
+                    episodes.forEach(ep -> {
+                        ep.setSeasonNumber(season.getSeasonNumber());
+                        ep.setSeriesId(season.getSeriesId());
+                        enrichEpisodeUrls(ep);
+                    });
                 });
-                log.info("Successfully fetched {} episodes for season {}", episodes.size(), seasonId);
+
                 return episodes;
             }
             return Collections.emptyList();
@@ -223,16 +211,13 @@ public class StorageService {
 
             if (response.getBody() != null && response.getBody().getContent() != null) {
                 List<Episode> episodes = response.getBody().getContent();
-                episodes.forEach(episode -> {
-                    episode.setStreamUrl(storageApiUrl + "/stream/episodes/" + episode.getId());
-                    episode.setCoverUrl(getCoverUrl(episode.getFiles()));
-                });
-                log.info("Successfully fetched {} episodes for series {}", episodes.size(), seriesId);
+                episodes.forEach(this::enrichEpisodeUrls);
+
                 return episodes;
             }
             return Collections.emptyList();
         } catch (RestClientException e) {
-            log.error("Error fetching all episodes for series {} from storage service: {}", seriesId, e.getMessage());
+            log.error("Error fetching all episodes for series {}: {}", seriesId, e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -246,9 +231,15 @@ public class StorageService {
 
             if (response.getBody() != null) {
                 Episode episode = response.getBody();
-                episode.setStreamUrl(storageApiUrl + "/stream/episodes/" + episodeId);
-                episode.setCoverUrl(getCoverUrl(episode.getFiles()));
-                log.info("Successfully fetched episode: S{}E{}", episode.getSeasonNumber(), episode.getEpisodeNumber());
+                enrichEpisodeUrls(episode);
+
+                if (episode.getSeasonId() != null) {
+                    getSeasonById(episode.getSeasonId()).ifPresent(season -> {
+                        episode.setSeasonNumber(season.getSeasonNumber());
+                        episode.setSeriesId(season.getSeriesId());
+                    });
+                }
+
                 return Optional.of(episode);
             }
             return Optional.empty();
@@ -259,34 +250,23 @@ public class StorageService {
     }
 
     public Optional<Episode> getFirstEpisode(Long seriesId) {
-        log.debug("Getting first available episode for series: {}", seriesId);
-
         List<Season> seasons = getSeasonsBySeries(seriesId);
-        if (seasons.isEmpty()) {
-            log.warn("No seasons found for series: {}", seriesId);
-            return Optional.empty();
-        }
+        if (seasons.isEmpty()) return Optional.empty();
 
-        seasons.sort((s1, s2) -> Integer.compare(s1.getSeasonNumber(), s2.getSeasonNumber()));
+        seasons.sort(Comparator.comparingInt(Season::getSeasonNumber));
 
         for (Season season : seasons) {
             List<Episode> episodes = getEpisodesBySeason(season.getId());
-
             if (!episodes.isEmpty()) {
-                Episode firstEpisode = episodes.stream()
-                        .min((e1, e2) -> Integer.compare(e1.getEpisodeNumber(), e2.getEpisodeNumber()))
+                Episode first = episodes.stream()
+                        .min(Comparator.comparingInt(Episode::getEpisodeNumber))
                         .orElse(episodes.get(0));
 
-                log.info("Found first available episode: S{}E{} for series {}",
-                        firstEpisode.getSeasonNumber(), firstEpisode.getEpisodeNumber(), seriesId);
-
-                return Optional.of(firstEpisode);
-            } else {
-                log.debug("Season {} has no episodes, checking next season", season.getSeasonNumber());
+                first.setSeasonNumber(season.getSeasonNumber());
+                first.setSeriesId(seriesId);
+                return Optional.of(first);
             }
         }
-
-        log.warn("No episodes found in any season for series: {}", seriesId);
         return Optional.empty();
     }
 
@@ -298,16 +278,21 @@ public class StorageService {
         return storageApiUrl + "/stream/episodes/" + episodeId;
     }
 
-    private String getCoverUrl(List<FileInfo> files) {
-        if (files != null) {
-            return files.stream()
-                    .filter(f -> "COVER".equals(f.getFileType()))
-                    .filter(f -> "COMPLETED".equals(f.getUploadStatus()))
-                    .map(FileInfo::getDownloadUrl)
-                    .findFirst()
-                    .orElse(null);
-        }
-        return null;
+    private void enrichMovieUrls(Movie movie) {
+        if (movie == null) return;
+        movie.setStreamUrl(getMovieStreamUrl(movie.getId()));
+        movie.setCoverUrl(storageApiUrl + "/stream/movies/" + movie.getId() + "/cover");
+    }
+
+    private void enrichEpisodeUrls(Episode episode) {
+        if (episode == null) return;
+        episode.setStreamUrl(getEpisodeStreamUrl(episode.getId()));
+        episode.setCoverUrl(storageApiUrl + "/stream/episodes/" + episode.getId() + "/cover");
+    }
+
+    private void enrichSeriesUrls(Series series) {
+        if (series == null) return;
+        series.setCoverUrl(storageApiUrl + "/stream/series/" + series.getId() + "/cover");
     }
 
     public static class PageResponse<T> {

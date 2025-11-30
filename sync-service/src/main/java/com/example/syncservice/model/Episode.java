@@ -4,8 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,7 +19,6 @@ public class Episode {
     private String seriesTitle;
     private String coverUrl;
     private String streamUrl;
-    private List<FileInfo> files;
 
     public String getFormattedDuration() {
         if (duration == null) return "0:00";
@@ -35,17 +32,7 @@ public class Episode {
     }
 
     public String getCoverImageUrl() {
-        if (coverUrl != null) return coverUrl;
-
-        if (files != null) {
-            return files.stream()
-                    .filter(f -> "COVER".equals(f.getFileType()))
-                    .map(FileInfo::getDownloadUrl)
-                    .findFirst()
-                    .orElse("/images/default-episode-cover.jpg");
-        }
-
-        return "/images/default-episode-cover.jpg";
+        return coverUrl != null ? coverUrl : "/images/default-episode-cover.jpg";
     }
 
     public String getEpisodeTitle() {

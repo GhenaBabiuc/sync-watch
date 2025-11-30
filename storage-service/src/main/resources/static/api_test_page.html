@@ -587,8 +587,9 @@
             const data = await res.json();
 
             let html = `
-                <div style="margin: 10px 0;">
-                    <button class="btn btn-sm btn-success" onclick="openModal('SEASON', null, ${seriesId})">+ Add Season to "${seriesTitle}"</button>
+                <div style="margin: 10px 0; display:flex; gap: 10px;">
+                    <button class="btn btn-sm btn-success" onclick="openModal('SEASON', null, ${seriesId})">+ Add Season</button>
+                    <button class="btn btn-sm btn-outline" style="background-color: #ebf8ff;" onclick="batchCreateSeasons(${seriesId})">++ Batch Seasons</button>
                 </div>
             `;
 
@@ -614,7 +615,97 @@
             btn.innerText = "Hide Seasons";
         } catch (e) {
             console.error(e);
+            alert("Error loading seasons");
+            btn.innerText = "Show Seasons";
         }
+    }
+
+    async function batchCreateSeasons(seriesId) {
+        const countStr = prompt("How many seasons to create?", "5");
+        if (!countStr) return;
+        const count = parseInt(countStr);
+        if (isNaN(count) || count <= 0) return alert("Invalid count");
+
+        const startStr = prompt("Start from season number?", "1");
+        const startNum = parseInt(startStr) || 1;
+
+        if (!confirm(`Are you sure you want to create ${count} seasons starting from Season ${startNum}?`)) return;
+
+        let successCount = 0;
+
+        console.log(`Starting batch creation for series ${seriesId}...`);
+
+        for (let i = 0; i < count; i++) {
+            const seasonNum = startNum + i;
+            try {
+                const body = {
+                    seriesId: seriesId,
+                    seasonNumber: seasonNum,
+                    title: `Season ${seasonNum}`,
+                    description: `Automatically generated description for Season ${seasonNum}`
+                };
+
+                const res = await fetch(`${API_BASE}/series/${seriesId}/seasons`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body)
+                });
+
+                if (res.ok) successCount++;
+                else {
+                    const err = await res.json();
+                    console.error(`Failed to create season ${seasonNum}:`, err);
+                }
+            } catch (e) {
+                console.error(`Error creating season ${seasonNum}`, e);
+            }
+        }
+
+        alert(`Batch process finished. Created ${successCount} of ${count} seasons. Please manually refresh the list (click Hide/Show Seasons).`);
+    }
+
+    async function batchCreateEpisodes(seasonId) {
+        const countStr = prompt("How many episodes to create?", "10");
+        if (!countStr) return;
+        const count = parseInt(countStr);
+        if (isNaN(count) || count <= 0) return alert("Invalid count");
+
+        const startStr = prompt("Start from episode number?", "1");
+        const startNum = parseInt(startStr) || 1;
+
+        if (!confirm(`Are you sure you want to create ${count} episodes starting from Episode ${startNum}?`)) return;
+
+        let successCount = 0;
+        console.log(`Starting batch creation for season ${seasonId}...`);
+
+        for (let i = 0; i < count; i++) {
+            const epNum = startNum + i;
+            try {
+                const body = {
+                    seasonId: seasonId,
+                    episodeNumber: epNum,
+                    title: `Episode ${epNum}`,
+                    description: `Automatically generated description for Episode ${epNum}`,
+                    duration: 45
+                };
+
+                const res = await fetch(`${API_BASE}/series/seasons/${seasonId}/episodes`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body)
+                });
+
+                if (res.ok) successCount++;
+                else {
+                    const err = await res.json();
+                    console.error(`Failed to create episode ${epNum}:`, err);
+                }
+            } catch (e) {
+                console.error(`Error creating episode ${epNum}`, e);
+            }
+        }
+
+        alert(`Batch process finished. Created ${successCount} of ${count} episodes. Please manually refresh the list (click Hide/Show Episodes).`);
     }
 
     async function toggleEpisodes(btn, seasonId, seasonNum) {
@@ -631,8 +722,9 @@
             const data = await res.json();
 
             let html = `
-                <div style="margin: 10px 0;">
-                    <button class="btn btn-sm btn-success" onclick="openModal('EPISODE', null, ${seasonId})">+ Add Episode to S${seasonNum}</button>
+                <div style="margin: 10px 0; display:flex; gap: 10px;">
+                    <button class="btn btn-sm btn-success" onclick="openModal('EPISODE', null, ${seasonId})">+ Add Episode</button>
+                    <button class="btn btn-sm btn-outline" style="background-color: #ebf8ff;" onclick="batchCreateEpisodes(${seasonId})">++ Batch Episodes</button>
                 </div>
             `;
 
@@ -675,6 +767,8 @@
             btn.innerText = "Hide Episodes";
         } catch (e) {
             console.error(e);
+            alert("Error loading episodes");
+            btn.innerText = "Show Episodes";
         }
     }
 

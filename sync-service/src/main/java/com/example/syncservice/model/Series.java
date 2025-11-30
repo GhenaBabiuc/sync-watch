@@ -17,21 +17,9 @@ public class Series {
     private Integer totalSeasons;
     private Integer totalEpisodes;
     private List<Season> seasons;
+    private String coverUrl;
 
     public String getCoverImageUrl() {
-        if (seasons != null && !seasons.isEmpty()) {
-            for (Season season : seasons) {
-                if (season.getEpisodes() != null && !season.getEpisodes().isEmpty()) {
-                    for (Episode episode : season.getEpisodes()) {
-                        String episodeCover = episode.getCoverImageUrl();
-                        if (episodeCover != null && !episodeCover.equals("/images/default-episode-cover.jpg")) {
-                            return episodeCover;
-                        }
-                    }
-                }
-            }
-        }
-
-        return "/images/default-series-cover.jpg";
+        return coverUrl != null ? coverUrl : "/images/default-series-cover.jpg";
     }
 }

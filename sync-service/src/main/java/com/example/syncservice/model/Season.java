@@ -16,6 +16,5 @@ public class Season {
     private String title;
     private String description;
     private Integer totalEpisodes;
-    private String seriesTitle;
     private List<Episode> episodes;
 }
