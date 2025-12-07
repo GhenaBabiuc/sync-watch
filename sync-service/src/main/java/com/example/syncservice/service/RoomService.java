@@ -138,16 +138,16 @@ public class RoomService {
         });
     }
 
-    @Scheduled(fixedRate = 60000)
-    public void cleanupInactiveUsers() {
-        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusMinutes(2);
-        rooms.forEach((roomId, room) -> {
-            boolean changed = room.getUsers().removeIf(user ->
-                    user.getLastSeen() != null && user.getLastSeen().isBefore(threshold)
-            );
-            if (changed) {
-                log.info("Cleaned up inactive users in room: {}", roomId);
-            }
-        });
-    }
+//    @Scheduled(fixedRate = 60000)
+//    public void cleanupInactiveUsers() {
+//        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusMinutes(2);
+//        rooms.forEach((roomId, room) -> {
+//            boolean changed = room.getUsers().removeIf(user ->
+//                    user.getLastSeen() != null && user.getLastSeen().isBefore(threshold)
+//            );
+//            if (changed) {
+//                log.info("Cleaned up inactive users in room: {}", roomId);
+//            }
+//        });
+//    }
 }

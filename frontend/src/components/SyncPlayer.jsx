@@ -4,6 +4,7 @@ import YouTube from 'react-youtube';
 
 const DEBOUNCE_TIME = 300;
 const TIME_SKEW_TOLERANCE = 2.0;
+const VOLUME_KEY = 'sync_watch_volume';
 
 const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEpisode, setCurrentEpisode}, ref) => {
     const videoRef = useRef(null);
@@ -15,6 +16,11 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
     const [isLoading, setIsLoading] = useState(false);
     const [syncAction, setSyncAction] = useState(false);
     const [debouncedStreamUrl, setDebouncedStreamUrl] = useState(null);
+
+    const getSavedVolume = () => {
+        const saved = localStorage.getItem(VOLUME_KEY);
+        return saved !== null ? parseFloat(saved) : 1.0;
+    };
 
     useEffect(() => {
         if (!room.streamUrl) {
@@ -100,7 +106,12 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
 
             } else if (key === 'f') {
                 if (!document.fullscreenElement) {
-                    if (containerRef.current) containerRef.current.requestFullscreen().catch(console.error);
+                    if (playerType === 'HTML5' && videoRef.current) {
+                        videoRef.current.requestFullscreen().catch(console.error);
+                    }
+                    else if (containerRef.current) {
+                        containerRef.current.requestFullscreen().catch(console.error);
+                    }
                 } else {
                     document.exitFullscreen();
                 }
@@ -116,7 +127,6 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
         };
 
         document.addEventListener('keydown', handleCaptureKeyDown, {capture: true});
-
         return () => {
             document.removeEventListener('keydown', handleCaptureKeyDown, {capture: true});
         };
@@ -145,6 +155,23 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
 
     }, [activeUrl]);
 
+    useEffect(() => {
+        if (playerType !== 'YOUTUBE') return;
+
+        const volumeInterval = setInterval(() => {
+            if (ytPlayerRef.current && typeof ytPlayerRef.current.getVolume === 'function') {
+                const currentVol = ytPlayerRef.current.getVolume(); // Возвращает 0-100
+                const normalizedVol = currentVol / 100;
+
+                if (Math.abs(getSavedVolume() - normalizedVol) > 0.01) {
+                    localStorage.setItem(VOLUME_KEY, normalizedVol);
+                }
+            }
+        }, 2000);
+
+        return () => clearInterval(volumeInterval);
+    }, [playerType]);
+
     const sendActionDebounced = (action) => {
         if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
         debounceTimeoutRef.current = setTimeout(() => {
@@ -153,7 +180,6 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
         }, DEBOUNCE_TIME);
     };
 
-    // --- Player Event Handlers ---
     const handleHTML5Play = () => {
         if (!syncAction) sendActionDebounced('play');
         setIsLoading(false);
@@ -172,6 +198,8 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
         const video = videoRef.current;
         if (!video) return;
 
+        video.volume = getSavedVolume();
+
         if (pendingSeekTimeRef.current !== null) {
             if (Number.isFinite(pendingSeekTimeRef.current)) {
                 video.currentTime = pendingSeekTimeRef.current;
@@ -186,9 +214,15 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
         }
     };
 
+    const handleHTML5VolumeChange = (e) => {
+        localStorage.setItem(VOLUME_KEY, e.target.volume);
+    };
+
     const handleYouTubeReady = (event) => {
         ytPlayerRef.current = event.target;
         setIsLoading(false);
+
+        event.target.setVolume(getSavedVolume() * 100);
 
         if (pendingSeekTimeRef.current !== null) {
             event.target.seekTo(pendingSeekTimeRef.current, true);
@@ -249,6 +283,7 @@ const SyncPlayer = React.forwardRef(({room, user, sendMessage, isHost, currentEp
                     onWaiting={handleHTML5Waiting}
                     onCanPlay={handleHTML5CanPlay}
                     onLoadedMetadata={handleHTML5LoadedMetadata}
+                    onVolumeChange={handleHTML5VolumeChange}
                     style={{outline: 'none'}}
                 >
                     Your browser does not support video.
