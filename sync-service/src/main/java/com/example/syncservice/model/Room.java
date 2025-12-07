@@ -13,12 +13,11 @@ public class Room {
     private String id;
     private String name;
     private RoomType roomType;
-    private Movie movie;
-    private Series series;
-    private String customUrl;
-
+    private Long contentId;
+    private String contentTitle;
+    private Long currentSeasonId;
     private Long currentEpisodeId;
-    private Episode currentEpisode;
+    private String customUrl;
     private double currentTime;
     private boolean isPlaying;
     private String hostId;
@@ -26,10 +25,11 @@ public class Room {
     private Set<User> users;
     private String lastActionUserId;
 
-    public Room(String id, String name, Movie movie, String hostId) {
+    public Room(String id, String name, Long movieId, String movieTitle, String hostId) {
         this.id = id;
         this.name = name;
-        this.movie = movie;
+        this.contentId = movieId;
+        this.contentTitle = movieTitle;
         this.roomType = RoomType.MOVIE;
         this.hostId = hostId;
         this.users = ConcurrentHashMap.newKeySet();
@@ -38,11 +38,13 @@ public class Room {
         this.isPlaying = false;
     }
 
-    public Room(String id, String name, Series series, Long initialEpisodeId, String hostId) {
+    public Room(String id, String name, Long seriesId, String seriesTitle, Long seasonId, Long episodeId, String hostId) {
         this.id = id;
         this.name = name;
-        this.series = series;
-        this.currentEpisodeId = initialEpisodeId;
+        this.contentId = seriesId;
+        this.contentTitle = seriesTitle;
+        this.currentSeasonId = seasonId;
+        this.currentEpisodeId = episodeId;
         this.roomType = RoomType.SERIES;
         this.hostId = hostId;
         this.users = ConcurrentHashMap.newKeySet();
@@ -56,6 +58,7 @@ public class Room {
         this.name = name;
         this.customUrl = customUrl;
         this.roomType = RoomType.CUSTOM;
+        this.contentTitle = "Web Content";
         this.hostId = hostId;
         this.users = ConcurrentHashMap.newKeySet();
         this.createdAt = LocalDateTime.now();
@@ -73,56 +76,6 @@ public class Room {
 
     public int getUserCount() {
         return users.size();
-    }
-
-    public void setUsers(Set<User> users) {
-        if (users == null) {
-            this.users = ConcurrentHashMap.newKeySet();
-        } else {
-            this.users = users;
-        }
-    }
-
-    public String getStreamUrl() {
-        if (roomType == RoomType.MOVIE && movie != null) {
-            return movie.getStreamUrl();
-        } else if (roomType == RoomType.SERIES && currentEpisode != null) {
-            return currentEpisode.getStreamUrl();
-        } else if (roomType == RoomType.CUSTOM) {
-            return customUrl;
-        }
-        return null;
-    }
-
-    public String getContentTitle() {
-        if (roomType == RoomType.MOVIE && movie != null) {
-            return movie.getTitle();
-        } else if (roomType == RoomType.SERIES && series != null) {
-            if (currentEpisode != null) {
-                return String.format("%s - S%dE%d: %s",
-                        series.getTitle(),
-                        currentEpisode.getSeasonNumber(),
-                        currentEpisode.getEpisodeNumber(),
-                        currentEpisode.getEpisodeTitle());
-            }
-            return series.getTitle();
-        } else if (roomType == RoomType.CUSTOM) {
-            return "Web Content";
-        }
-        return "Unknown Content";
-    }
-
-    public String getCoverImageUrl() {
-        if (roomType == RoomType.MOVIE && movie != null) {
-            return movie.getCoverImageUrl();
-        } else if (roomType == RoomType.SERIES) {
-            if (currentEpisode != null) {
-                return currentEpisode.getCoverImageUrl();
-            } else if (series != null) {
-                return series.getCoverImageUrl();
-            }
-        }
-        return "/images/default-cover.jpg";
     }
 
     public enum RoomType {

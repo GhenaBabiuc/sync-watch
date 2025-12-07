@@ -50,6 +50,19 @@ public class ModelMapperConfig {
                         .map(sm -> mapMediaFile(sm.getMediaFile(), sm.getCategory(), sm.isPrimary()))
                         .toList())
                         .map(source.getMedia(), destination.getMediaFiles());
+
+                using(ctx -> {
+                    List<Season> seasons = ((Series) ctx.getSource()).getSeasons();
+                    return seasons != null ? seasons.size() : 0;
+                }).map(source, destination.getTotalSeasons());
+
+                using(ctx -> {
+                    List<Season> seasons = ((Series) ctx.getSource()).getSeasons();
+                    if (seasons == null) return 0;
+                    return seasons.stream()
+                            .mapToInt(season -> season.getEpisodes() != null ? season.getEpisodes().size() : 0)
+                            .sum();
+                }).map(source, destination.getTotalEpisodes());
             }
         });
 
@@ -62,6 +75,11 @@ public class ModelMapperConfig {
                         .map(sm -> mapMediaFile(sm.getMediaFile(), sm.getCategory(), sm.isPrimary()))
                         .toList())
                         .map(source.getMedia(), destination.getMediaFiles());
+
+                using(ctx -> {
+                    List<Episode> episodes = ((Season) ctx.getSource()).getEpisodes();
+                    return episodes != null ? episodes.size() : 0;
+                }).map(source, destination.getTotalEpisodes());
             }
         });
 

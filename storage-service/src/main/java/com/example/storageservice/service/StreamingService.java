@@ -37,7 +37,9 @@ public class StreamingService {
     private final MoviesMediaRepository moviesMediaRepository;
     private final EpisodesMediaRepository episodesMediaRepository;
     private final SeriesMediaRepository seriesMediaRepository;
+
     private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d+)-(\\d*)");
+    private static final long DEFAULT_CHUNK_SIZE = 1024 * 1024;
 
     @SneakyThrows
     @Transactional(readOnly = true)
@@ -98,11 +100,30 @@ public class StreamingService {
         MediaFile file = fileOpt.get();
         String rangeHeader = request.getHeader(HttpHeaders.RANGE);
 
-        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-            return handleRangeRequest(file, rangeHeader);
-        } else {
-            return handleFullFileRequest(file);
+        if (rangeHeader == null) {
+            return handleRangeRequest(file, 0, DEFAULT_CHUNK_SIZE - 1);
         }
+
+        Matcher matcher = RANGE_PATTERN.matcher(rangeHeader);
+        if (matcher.find()) {
+            long start = Long.parseLong(matcher.group(1));
+            long end;
+            String endStr = matcher.group(2);
+
+            if (endStr.isEmpty()) {
+                end = start + DEFAULT_CHUNK_SIZE - 1;
+
+                if (end >= file.getFileSize()) {
+                    end = file.getFileSize() - 1;
+                }
+            } else {
+                end = Long.parseLong(endStr);
+            }
+
+            return handleRangeRequest(file, start, end);
+        }
+
+        return handleRangeRequest(file, 0, DEFAULT_CHUNK_SIZE - 1);
     }
 
     private ResponseEntity<InputStreamResource> serveStaticFile(Optional<MediaFile> fileOpt) throws Exception {
@@ -113,7 +134,12 @@ public class StreamingService {
         MediaFile file = fileOpt.get();
         String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
 
-        InputStream inputStream = getMinioObject(file.getMinioBucket(), file.getMinioObjectKey());
+        InputStream inputStream = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(file.getMinioBucket())
+                        .object(file.getMinioObjectKey())
+                        .build()
+        );
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
@@ -125,27 +151,20 @@ public class StreamingService {
         return fileOpt.isEmpty() || !UploadStatus.COMPLETED.equals(fileOpt.get().getUploadStatus());
     }
 
-    private ResponseEntity<InputStreamResource> handleRangeRequest(MediaFile file, String rangeHeader) throws Exception {
-        Matcher matcher = RANGE_PATTERN.matcher(rangeHeader);
-
-        if (!matcher.find()) {
-            return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                    .header(HttpHeaders.CONTENT_RANGE, "bytes */" + file.getFileSize())
-                    .build();
-        }
-
+    private ResponseEntity<InputStreamResource> handleRangeRequest(MediaFile file, long start, long end) throws Exception {
         long fileSize = file.getFileSize();
-        long start = Long.parseLong(matcher.group(1));
-        long end = matcher.group(2).isEmpty() ? fileSize - 1 : Long.parseLong(matcher.group(2));
 
-        if (start >= fileSize || end >= fileSize || start > end) {
+        if (start >= fileSize) {
             return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
                     .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
                     .build();
         }
 
-        long contentLength = end - start + 1;
+        if (end >= fileSize) {
+            end = fileSize - 1;
+        }
 
+        long contentLength = end - start + 1;
         InputStream inputStream = minioClient.getObject(
                 GetObjectArgs.builder()
                         .bucket(file.getMinioBucket())
@@ -161,24 +180,5 @@ public class StreamingService {
                 .header(HttpHeaders.CONTENT_RANGE, String.format("bytes %d-%d/%d", start, end, fileSize))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .body(new InputStreamResource(inputStream));
-    }
-
-    private ResponseEntity<InputStreamResource> handleFullFileRequest(MediaFile file) throws Exception {
-        InputStream inputStream = getMinioObject(file.getMinioBucket(), file.getMinioObjectKey());
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, file.getContentType())
-                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(file.getFileSize()))
-                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .body(new InputStreamResource(inputStream));
-    }
-
-    private InputStream getMinioObject(String bucket, String key) throws Exception {
-        return minioClient.getObject(
-                GetObjectArgs.builder()
-                        .bucket(bucket)
-                        .object(key)
-                        .build()
-        );
     }
 }
