@@ -4,6 +4,7 @@ import NavBar from './components/NavBar';
 import Dashboard from './pages/Dashboard';
 import Room from './pages/Room';
 import SetUsername from './pages/SetUsername';
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 function App() {
     const [user, setUser] = useState({id: '', username: ''});
@@ -44,6 +45,7 @@ function App() {
                     <Route path="/" element={<Dashboard user={user}/>}/>
                     <Route path="/room/:roomId" element={<Room user={user}/>}/>
                     <Route path="/set-username" element={<SetUsername user={user} setUser={setUser}/>}/>
+                    <Route path="/admin" element={<AdminDashboard/>}/>
                 </Routes>
             </div>
         </BrowserRouter>
