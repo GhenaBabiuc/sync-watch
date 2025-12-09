@@ -64,6 +64,17 @@ services:
     networks:
       - movie-network
 
+  frontend:
+    build: ./frontend
+    container_name: sync-watch-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - storage-service
+      - sync-service
+    networks:
+      - movie-network
+
 volumes:
   postgres_data:
   minio_data:
