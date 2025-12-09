@@ -9,8 +9,8 @@ import {STORAGE_API_URL, SYNC_API_URL} from '../api';
 const PAGE_SIZE = 12;
 
 const Dashboard = ({user}) => {
-    const [moviesData, setMoviesData] = useState({content: [], totalPages: 0, page: 0});
-    const [seriesData, setSeriesData] = useState({content: [], totalPages: 0, page: 0});
+    const [moviesData, setMoviesData] = useState({content: [], totalPages: 0, page: 0, totalElements: 0});
+    const [seriesData, setSeriesData] = useState({content: [], totalPages: 0, page: 0, totalElements: 0});
     const [roomsData, setRoomsData] = useState({rooms: [], movieRoomCounts: {}, seriesRoomCounts: {}});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -29,7 +29,8 @@ const Dashboard = ({user}) => {
             setMoviesData({
                 content: res.data.content,
                 totalPages: res.data.totalPages,
-                page: res.data.number
+                page: res.data.number,
+                totalElements: res.data.totalElements
             });
         } catch (error) {
             console.error("Error fetching movies", error);
@@ -45,7 +46,8 @@ const Dashboard = ({user}) => {
             setSeriesData({
                 content: res.data.content,
                 totalPages: res.data.totalPages,
-                page: res.data.number
+                page: res.data.number,
+                totalElements: res.data.totalElements
             });
         } catch (error) {
             console.error("Error fetching series", error);
@@ -165,7 +167,7 @@ const Dashboard = ({user}) => {
 
                         <Tabs defaultActiveKey="movies" id="contentTabs" className="mb-4">
                             <Tab eventKey="movies"
-                                 title={<><i className="fas fa-film me-2"></i>Movies ({moviesData.content.length})</>}>
+                                 title={<><i className="fas fa-film me-2"></i>Movies ({moviesData.totalElements})</>}>
                                 <div className="row g-4 mt-1">
                                     {moviesData.content.length === 0 &&
                                         <Alert variant="dark" className="border-0 bg-opacity-50">No movies available
@@ -235,7 +237,7 @@ const Dashboard = ({user}) => {
                                 />
                             </Tab>
                             <Tab eventKey="series"
-                                 title={<><i className="fas fa-tv me-2"></i>Series ({seriesData.content.length})</>}>
+                                 title={<><i className="fas fa-tv me-2"></i>Series ({seriesData.totalElements})</>}>
                                 <div className="row g-4 mt-1">
                                     {seriesData.content.length === 0 &&
                                         <Alert variant="dark" className="border-0 bg-opacity-50">No series available
