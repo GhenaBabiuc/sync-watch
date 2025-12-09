@@ -3,38 +3,72 @@ import axios from 'axios';
 import {useNavigate} from 'react-router-dom';
 import {Alert, Badge, Button, Card, Container, Tab, Tabs} from 'react-bootstrap';
 import RoomModals from '../components/RoomModals';
+import PaginationControl from '../components/PaginationControl';
 import {STORAGE_API_URL, SYNC_API_URL} from '../api';
 
+const PAGE_SIZE = 12;
+
 const Dashboard = ({user}) => {
-    const [content, setContent] = useState({movies: [], series: []});
+    const [moviesData, setMoviesData] = useState({content: [], totalPages: 0, page: 0});
+    const [seriesData, setSeriesData] = useState({content: [], totalPages: 0, page: 0});
     const [roomsData, setRoomsData] = useState({rooms: [], movieRoomCounts: {}, seriesRoomCounts: {}});
-    const [loadingContent, setLoadingContent] = useState(true);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [modalContent, setModalContent] = useState(null);
     const [modalContentType, setModalContentType] = useState(null);
+
     const navigate = useNavigate();
     const backgroundUrl = '/images/main-background.jpeg';
 
+    const fetchMovies = async (page = 0) => {
+        try {
+            const res = await axios.get(`${STORAGE_API_URL}/movies`, {
+                params: {page, size: PAGE_SIZE}
+            });
+            setMoviesData({
+                content: res.data.content,
+                totalPages: res.data.totalPages,
+                page: res.data.number
+            });
+        } catch (error) {
+            console.error("Error fetching movies", error);
+            setError('Failed to fetch movies.');
+        }
+    };
+
+    const fetchSeries = async (page = 0) => {
+        try {
+            const res = await axios.get(`${STORAGE_API_URL}/series`, {
+                params: {page, size: PAGE_SIZE}
+            });
+            setSeriesData({
+                content: res.data.content,
+                totalPages: res.data.totalPages,
+                page: res.data.number
+            });
+        } catch (error) {
+            console.error("Error fetching series", error);
+        }
+    };
+
+    const onMoviePageChange = (page) => {
+        fetchMovies(page);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
+    const onSeriesPageChange = (page) => {
+        fetchSeries(page);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
     useEffect(() => {
-        const fetchContent = async () => {
-            try {
-                const [moviesRes, seriesRes] = await Promise.all([
-                    axios.get(`${STORAGE_API_URL}/movies?size=100`),
-                    axios.get(`${STORAGE_API_URL}/series?size=100`)
-                ]);
-                setContent({
-                    movies: moviesRes.data.content || moviesRes.data || [],
-                    series: seriesRes.data.content || seriesRes.data || []
-                });
-                setLoadingContent(false);
-            } catch (error) {
-                console.error("Error fetching content", error);
-                setError('Failed to fetch content. Ensure Storage service is running.');
-                setLoadingContent(false);
-            }
+        const init = async () => {
+            setLoading(true);
+            await Promise.all([fetchMovies(0), fetchSeries(0)]);
+            setLoading(false);
         };
-        fetchContent();
+        init();
     }, []);
 
     useEffect(() => {
@@ -46,11 +80,11 @@ const Dashboard = ({user}) => {
                 const movieRoomCounts = {};
                 const seriesRoomCounts = {};
                 rooms.forEach(room => {
-                    if (room.roomType === 'MOVIE' && room.movie) {
-                        const key = 'movie_' + room.movie.id;
+                    if (room.roomType === 'MOVIE' && room.contentId) {
+                        const key = 'movie_' + room.contentId;
                         movieRoomCounts[key] = (movieRoomCounts[key] || 0) + 1;
-                    } else if (room.roomType === 'SERIES' && room.series) {
-                        const key = 'series_' + room.series.id;
+                    } else if (room.roomType === 'SERIES' && room.contentId) {
+                        const key = 'series_' + room.contentId;
                         seriesRoomCounts[key] = (seriesRoomCounts[key] || 0) + 1;
                     }
                 });
@@ -100,14 +134,13 @@ const Dashboard = ({user}) => {
         return h > 0 ? `${h}h ${m}m` : `${m}m`;
     };
 
-    if (loadingContent) {
+    if (loading) {
         return <div className="text-center mt-5 text-secondary">
             <i className="fas fa-spinner fa-spin fa-2x mb-3"></i>
             <p>Loading content...</p>
         </div>;
     }
 
-    const {movies, series} = content;
     const {rooms, movieRoomCounts, seriesRoomCounts} = roomsData;
 
     return (
@@ -132,12 +165,12 @@ const Dashboard = ({user}) => {
 
                         <Tabs defaultActiveKey="movies" id="contentTabs" className="mb-4">
                             <Tab eventKey="movies"
-                                 title={<><i className="fas fa-film me-2"></i>Movies ({movies.length})</>}>
+                                 title={<><i className="fas fa-film me-2"></i>Movies ({moviesData.content.length})</>}>
                                 <div className="row g-4 mt-1">
-                                    {movies.length === 0 &&
+                                    {moviesData.content.length === 0 &&
                                         <Alert variant="dark" className="border-0 bg-opacity-50">No movies available
                                             yet.</Alert>}
-                                    {movies.map(movie => (
+                                    {moviesData.content.map(movie => (
                                         <div key={movie.id} className="col-md-6 col-lg-4">
                                             <Card className="content-card"
                                                   onClick={() => openCreateModal(movie, 'MOVIE')}>
@@ -195,14 +228,19 @@ const Dashboard = ({user}) => {
                                         </div>
                                     ))}
                                 </div>
+                                <PaginationControl
+                                    currentPage={moviesData.page}
+                                    totalPages={moviesData.totalPages}
+                                    onPageChange={onMoviePageChange}
+                                />
                             </Tab>
                             <Tab eventKey="series"
-                                 title={<><i className="fas fa-tv me-2"></i>Series ({series.length})</>}>
+                                 title={<><i className="fas fa-tv me-2"></i>Series ({seriesData.content.length})</>}>
                                 <div className="row g-4 mt-1">
-                                    {series.length === 0 &&
+                                    {seriesData.content.length === 0 &&
                                         <Alert variant="dark" className="border-0 bg-opacity-50">No series available
                                             yet.</Alert>}
-                                    {series.map(s => (
+                                    {seriesData.content.map(s => (
                                         <div key={s.id} className="col-md-6 col-lg-4">
                                             <Card className="content-card" onClick={() => openCreateModal(s, 'SERIES')}>
                                                 <div className="position-relative overflow-hidden">
@@ -258,6 +296,11 @@ const Dashboard = ({user}) => {
                                         </div>
                                     ))}
                                 </div>
+                                <PaginationControl
+                                    currentPage={seriesData.page}
+                                    totalPages={seriesData.totalPages}
+                                    onPageChange={onSeriesPageChange}
+                                />
                             </Tab>
                             <Tab eventKey="custom" title={<><i className="fas fa-link me-2"></i>Link / YouTube</>}>
                                 <Card className="glass-panel text-white border border-secondary p-5 text-center"
@@ -266,8 +309,7 @@ const Dashboard = ({user}) => {
                                     <h3 className="mb-3">Watch Web Content</h3>
                                     <p className="text-secondary mb-4" style={{maxWidth: '600px', margin: '0 auto'}}>
                                         Paste a link to a YouTube video or a direct link to a video file (.mp4, .m3u8)
-                                        to
-                                        watch with friends.
+                                        to watch with friends.
                                     </p>
                                     <Button variant="primary" size="lg" className="rounded-pill px-5 mx-auto"
                                             style={{maxWidth: '300px'}}>

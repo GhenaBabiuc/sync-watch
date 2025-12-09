@@ -1,39 +1,57 @@
 import React, {useEffect, useState} from 'react';
 import axios from 'axios';
 import {Accordion, Badge, Button, Card, Container, Form, Modal, ProgressBar, Tab, Tabs} from 'react-bootstrap';
+import PaginationControl from '../components/PaginationControl';
 import {STORAGE_API_URL} from '../api';
 
 const AdminDashboard = () => {
-    const [movies, setMovies] = useState([]);
-    const [series, setSeries] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [moviePage, setMoviePage] = useState({content: [], totalPages: 0, number: 0});
+    const [seriesPage, setSeriesPage] = useState({content: [], totalPages: 0, number: 0});
     const [uploadQueue, setUploadQueue] = useState([]);
+    const [refreshTriggers, setRefreshTriggers] = useState({});
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState('MOVIE');
     const [modalData, setModalData] = useState({});
     const [parentId, setParentId] = useState(null);
 
-    const fetchContent = async () => {
-        setLoading(true);
+    const triggerRefresh = (key) => {
+        setRefreshTriggers(prev => ({...prev, [key]: Date.now()}));
+    };
+
+    const fetchMovies = async (page = 0) => {
         try {
-            const [moviesRes, seriesRes] = await Promise.all([
-                axios.get(`${STORAGE_API_URL}/movies?size=100`),
-                axios.get(`${STORAGE_API_URL}/series?size=100`)
-            ]);
-            setMovies(moviesRes.data.content || []);
-            setSeries(seriesRes.data.content || []);
-        } catch (error) {
-            console.error("Failed to load content", error);
-        } finally {
-            setLoading(false);
+            const res = await axios.get(`${STORAGE_API_URL}/movies`, {params: {page, size: 20}});
+            setMoviePage(res.data);
+        } catch (e) {
+            console.error(e);
         }
     };
 
+    const fetchSeries = async (page = 0) => {
+        try {
+            const res = await axios.get(`${STORAGE_API_URL}/series`, {params: {page, size: 20}});
+            setSeriesPage(res.data);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleMoviePageChange = (page) => {
+        fetchMovies(page);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
+    const handleSeriesPageChange = (page) => {
+        fetchSeries(page);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
     useEffect(() => {
-        fetchContent();
+        fetchMovies(0);
+        fetchSeries(0);
     }, []);
 
-    const handleFileUpload = async (files, entityType, entityId, category) => {
+    const handleFileUpload = async (files, entityType, entityId, category, parentId = null) => {
         if (!files || files.length === 0) return;
 
         const newTasks = Array.from(files).map(file => ({
@@ -44,17 +62,16 @@ const AdminDashboard = () => {
             status: 'PENDING',
             entityType,
             entityId,
-            category
+            category,
+            parentId
         }));
 
         setUploadQueue(prev => [...prev, ...newTasks]);
-
         newTasks.forEach(task => processUpload(task));
     };
 
     const processUpload = async (task) => {
         updateTaskStatus(task.id, 'UPLOADING', 0);
-
         try {
             const initRes = await axios.post(`${STORAGE_API_URL}/files/upload`, {
                 originalFilename: task.file.name,
@@ -84,7 +101,15 @@ const AdminDashboard = () => {
             });
 
             updateTaskStatus(task.id, 'COMPLETED', 100);
-            fetchContent(); // Обновляем списки, чтобы увидеть статусы
+
+            if (task.entityType === 'MOVIE') {
+                fetchMovies(moviePage.number);
+            } else if (task.entityType === 'SERIES') {
+                fetchSeries(seriesPage.number);
+            } else if (task.entityType === 'EPISODE' && task.parentId) {
+                triggerRefresh(`season-${task.parentId}`);
+            }
+
         } catch (error) {
             console.error("Upload failed", error);
             updateTaskStatus(task.id, 'ERROR', 0);
@@ -92,9 +117,7 @@ const AdminDashboard = () => {
     };
 
     const updateTaskStatus = (id, status, progress) => {
-        setUploadQueue(prev => prev.map(t =>
-            t.id === id ? {...t, status, progress} : t
-        ));
+        setUploadQueue(prev => prev.map(t => t.id === id ? {...t, status, progress} : t));
     };
 
     const openModal = (type, data = null, pId = null) => {
@@ -128,24 +151,29 @@ const AdminDashboard = () => {
         }
 
         try {
-            await axios({
-                method,
-                url: `${STORAGE_API_URL}${url}`,
-                data
-            });
+            await axios({method, url: `${STORAGE_API_URL}${url}`, data});
             setShowModal(false);
-            fetchContent();
+
+            if (modalType === 'MOVIE') fetchMovies(moviePage.number);
+            else if (modalType === 'SERIES') fetchSeries(seriesPage.number);
+            else if (modalType === 'SEASON') triggerRefresh(`series-${parentId}`);
+            else if (modalType === 'EPISODE') triggerRefresh(`season-${parentId}`);
+
         } catch (err) {
             alert('Error saving: ' + err.message);
         }
     };
 
-    const handleDelete = async (type, id) => {
+    const handleDelete = async (type, id, pId = null) => {
         if (!confirm('Are you sure? This will delete all files too.')) return;
         try {
             let endpoint = type === 'MOVIE' ? 'movies' : type === 'SERIES' ? 'series' : type === 'SEASON' ? 'series/seasons' : 'series/episodes';
             await axios.delete(`${STORAGE_API_URL}/${endpoint}/${id}`);
-            fetchContent();
+
+            if (type === 'MOVIE') fetchMovies(moviePage.number);
+            else if (type === 'SERIES') fetchSeries(seriesPage.number);
+            else if (type === 'SEASON') triggerRefresh(`series-${pId}`);
+            else if (type === 'EPISODE') triggerRefresh(`season-${pId}`);
         } catch (err) {
             alert('Delete failed');
         }
@@ -154,7 +182,6 @@ const AdminDashboard = () => {
     const StatusBadge = ({files, type}) => {
         if (!files) return null;
         const has = (cat) => files.some(f => f.category === cat && f.uploadStatus === 'COMPLETED');
-
         return (
             <div className="d-flex gap-1 flex-wrap">
                 {type === 'VIDEO' && (has('VIDEO') ? <Badge bg="success">Video</Badge> :
@@ -165,15 +192,14 @@ const AdminDashboard = () => {
         );
     };
 
-    const UploadZone = ({type, id}) => {
+    const UploadZone = ({type, id, parentId}) => {
         const [category, setCategory] = useState(type === 'EPISODE' || type === 'MOVIE' ? 'VIDEO' : 'POSTER');
-
         return (
             <div className="border border-secondary rounded p-2 text-center"
                  onDragOver={e => e.preventDefault()}
                  onDrop={e => {
                      e.preventDefault();
-                     handleFileUpload(e.dataTransfer.files, type, id, category);
+                     handleFileUpload(e.dataTransfer.files, type, id, category, parentId);
                  }}>
                 <Form.Select size="sm" className="mb-1 bg-dark text-white border-secondary"
                              value={category} onChange={e => setCategory(e.target.value)}>
@@ -190,7 +216,6 @@ const AdminDashboard = () => {
         <Container fluid className="py-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2>Admin Dashboard</h2>
-                <Button variant="outline-light" onClick={fetchContent}>Refresh</Button>
             </div>
 
             {uploadQueue.length > 0 && (
@@ -215,7 +240,7 @@ const AdminDashboard = () => {
                 <Tab eventKey="movies" title="Movies">
                     <Button variant="success" className="mb-3" onClick={() => openModal('MOVIE')}>+ Add Movie</Button>
                     <div className="d-flex flex-column gap-3">
-                        {movies.map(movie => (
+                        {moviePage.content.map(movie => (
                             <Card key={movie.id} className="bg-dark text-white border-secondary">
                                 <Card.Body className="d-flex align-items-center gap-3">
                                     <div style={{width: '50px'}}>#{movie.id}</div>
@@ -237,12 +262,17 @@ const AdminDashboard = () => {
                             </Card>
                         ))}
                     </div>
+                    <PaginationControl
+                        currentPage={moviePage.number}
+                        totalPages={moviePage.totalPages}
+                        onPageChange={handleMoviePageChange}
+                    />
                 </Tab>
 
                 <Tab eventKey="series" title="Series">
                     <Button variant="success" className="mb-3" onClick={() => openModal('SERIES')}>+ Add Series</Button>
                     <Accordion>
-                        {series.map(s => (
+                        {seriesPage.content.map(s => (
                             <Accordion.Item eventKey={s.id.toString()} key={s.id}
                                             className="bg-dark text-white border-secondary mb-2">
                                 <Accordion.Header>
@@ -265,12 +295,24 @@ const AdminDashboard = () => {
                                                 onClick={() => openModal('SEASON', null, s.id)}>+ Add Season</Button>
                                     </div>
 
-                                    <SeasonsList seriesId={s.id} openModal={openModal} handleDelete={handleDelete}
-                                                 UploadZone={UploadZone} StatusBadge={StatusBadge}/>
+                                    <SeasonsList
+                                        seriesId={s.id}
+                                        openModal={openModal}
+                                        handleDelete={handleDelete}
+                                        UploadZone={UploadZone}
+                                        StatusBadge={StatusBadge}
+                                        refreshTrigger={refreshTriggers[`series-${s.id}`]}
+                                        refreshTriggers={refreshTriggers}
+                                    />
                                 </Accordion.Body>
                             </Accordion.Item>
                         ))}
                     </Accordion>
+                    <PaginationControl
+                        currentPage={seriesPage.number}
+                        totalPages={seriesPage.totalPages}
+                        onPageChange={handleSeriesPageChange}
+                    />
                 </Tab>
             </Tabs>
 
@@ -321,13 +363,13 @@ const AdminDashboard = () => {
     );
 };
 
-const SeasonsList = ({seriesId, openModal, handleDelete, UploadZone, StatusBadge}) => {
+const SeasonsList = ({seriesId, openModal, handleDelete, UploadZone, StatusBadge, refreshTrigger, refreshTriggers}) => {
     const [seasons, setSeasons] = useState([]);
 
     useEffect(() => {
         axios.get(`${STORAGE_API_URL}/series/${seriesId}/seasons?size=50`)
             .then(res => setSeasons(res.data.content || []));
-    }, [seriesId]);
+    }, [seriesId, refreshTrigger]);
 
     return (
         <div className="ms-3">
@@ -339,26 +381,32 @@ const SeasonsList = ({seriesId, openModal, handleDelete, UploadZone, StatusBadge
                             <Button size="sm" variant="outline-light"
                                     onClick={() => openModal('SEASON', season, seriesId)}>Edit</Button>
                             <Button size="sm" variant="outline-danger"
-                                    onClick={() => handleDelete('SEASON', season.id)}>Del</Button>
+                                    onClick={() => handleDelete('SEASON', season.id, seriesId)}>Del</Button>
                             <Button size="sm" variant="success" onClick={() => openModal('EPISODE', null, season.id)}>+
                                 Add Ep</Button>
                         </div>
                     </div>
-                    <EpisodesList seasonId={season.id} openModal={openModal} handleDelete={handleDelete}
-                                  UploadZone={UploadZone} StatusBadge={StatusBadge}/>
+                    <EpisodesList
+                        seasonId={season.id}
+                        openModal={openModal}
+                        handleDelete={handleDelete}
+                        UploadZone={UploadZone}
+                        StatusBadge={StatusBadge}
+                        refreshTrigger={refreshTriggers ? refreshTriggers[`season-${season.id}`] : null}
+                    />
                 </div>
             ))}
         </div>
     );
 };
 
-const EpisodesList = ({seasonId, openModal, handleDelete, UploadZone, StatusBadge}) => {
+const EpisodesList = ({seasonId, openModal, handleDelete, UploadZone, StatusBadge, refreshTrigger}) => {
     const [episodes, setEpisodes] = useState([]);
 
     useEffect(() => {
         axios.get(`${STORAGE_API_URL}/series/seasons/${seasonId}/episodes?size=100`)
             .then(res => setEpisodes(res.data.content || []));
-    }, [seasonId]);
+    }, [seasonId, refreshTrigger]);
 
     return (
         <div className="d-flex flex-column gap-2">
@@ -369,13 +417,14 @@ const EpisodesList = ({seasonId, openModal, handleDelete, UploadZone, StatusBadg
                         <div className="flex-grow-1 text-truncate">{ep.title}</div>
                         <StatusBadge files={ep.mediaFiles} type="VIDEO"/>
                         <div style={{width: '180px'}}>
-                            <UploadZone type="EPISODE" id={ep.id}/>
+                            <UploadZone type="EPISODE" id={ep.id} parentId={seasonId}/>
                         </div>
                         <Button size="sm" variant="link" className="text-white p-0"
                                 onClick={() => openModal('EPISODE', ep, seasonId)}><i
                             className="fas fa-edit"></i></Button>
                         <Button size="sm" variant="link" className="text-danger p-0"
-                                onClick={() => handleDelete('EPISODE', ep.id)}><i className="fas fa-trash"></i></Button>
+                                onClick={() => handleDelete('EPISODE', ep.id, seasonId)}><i
+                            className="fas fa-trash"></i></Button>
                     </Card.Body>
                 </Card>
             ))}
