@@ -489,11 +489,17 @@ const Room = ({user}) => {
                             </div>
                         )}
 
-                        <div className="p-3 border-top border-secondary border-opacity-25" style={{maxHeight: '40%'}}>
+                        <div
+                            className={`p-3 border-top border-secondary border-opacity-25 ${room.roomType !== 'SERIES' ? 'flex-grow-1 d-flex flex-column min-vh-0' : ''}`}
+                            style={room.roomType === 'SERIES' ? {maxHeight: '40%'} : {}}
+                        >
                             <h6 className="text-uppercase text-secondary small fw-bold mb-3">
                                 <i className="fas fa-users me-2"></i>Viewers
                             </h6>
-                            <div className="sidebar-scrollable" style={{maxHeight: '200px'}}>
+                            <div
+                                className="sidebar-scrollable"
+                                style={room.roomType === 'SERIES' ? {maxHeight: '200px'} : {flex: 1, overflowY: 'auto'}}
+                            >
                                 {allUsers.map(u => (
                                     <Card key={u.id} className="user-item mb-2 text-white border-0"
                                           style={{background: 'rgba(0,0,0,0.3)'}}>
