@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface SeriesRepository extends JpaRepository<Series, Long> {
 
     @Query("SELECT s FROM Series s WHERE " +
+            "(:title IS NULL OR LOWER(s.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
             "(:year IS NULL OR s.year = :year) " +
             "ORDER BY s.createdAt DESC")
     Page<Series> findSeriesWithFilters(@Param("title") String title,

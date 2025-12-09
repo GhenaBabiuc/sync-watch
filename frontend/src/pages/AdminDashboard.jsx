@@ -13,6 +13,7 @@ const AdminDashboard = () => {
     const [modalType, setModalType] = useState('MOVIE');
     const [modalData, setModalData] = useState({});
     const [parentId, setParentId] = useState(null);
+    const [filters, setFilters] = useState({title: '', year: ''});
 
     const triggerRefresh = (key) => {
         setRefreshTriggers(prev => ({...prev, [key]: Date.now()}));
@@ -20,7 +21,13 @@ const AdminDashboard = () => {
 
     const fetchMovies = async (page = 0) => {
         try {
-            const res = await axios.get(`${STORAGE_API_URL}/movies`, {params: {page, size: 20}});
+            const params = {
+                page,
+                size: 20,
+                ...(filters.title && {title: filters.title}),
+                ...(filters.year && {year: filters.year})
+            };
+            const res = await axios.get(`${STORAGE_API_URL}/movies`, {params});
             setMoviePage(res.data);
         } catch (e) {
             console.error(e);
@@ -29,11 +36,23 @@ const AdminDashboard = () => {
 
     const fetchSeries = async (page = 0) => {
         try {
-            const res = await axios.get(`${STORAGE_API_URL}/series`, {params: {page, size: 20}});
+            const params = {
+                page,
+                size: 20,
+                ...(filters.title && {title: filters.title}),
+                ...(filters.year && {year: filters.year})
+            };
+            const res = await axios.get(`${STORAGE_API_URL}/series`, {params});
             setSeriesPage(res.data);
         } catch (e) {
             console.error(e);
         }
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        fetchMovies(0);
+        fetchSeries(0);
     };
 
     const handleMoviePageChange = (page) => {
@@ -217,6 +236,48 @@ const AdminDashboard = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2>Admin Dashboard</h2>
             </div>
+
+            <Card className="mb-4 bg-dark text-white border-secondary">
+                <Card.Body>
+                    <form onSubmit={handleSearch} className="row g-2 align-items-center">
+                        <div className="col-md-6">
+                            <input
+                                type="text"
+                                className="form-control bg-secondary text-white border-secondary"
+                                placeholder="Filter by title..."
+                                value={filters.title}
+                                onChange={e => setFilters({...filters, title: e.target.value})}
+                            />
+                        </div>
+                        <div className="col-md-2">
+                            <input
+                                type="number"
+                                className="form-control bg-secondary text-white border-secondary"
+                                placeholder="Year"
+                                value={filters.year}
+                                onChange={e => setFilters({...filters, year: e.target.value})}
+                            />
+                        </div>
+                        <div className="col-md-4 d-flex gap-2">
+                            <Button type="submit" variant="primary" className="w-100">
+                                <i className="fas fa-search me-2"></i>Filter
+                            </Button>
+                            <Button
+                                variant="outline-secondary"
+                                onClick={() => {
+                                    setFilters({title: '', year: ''});
+                                    setTimeout(() => {
+                                        fetchMovies(0);
+                                        fetchSeries(0);
+                                    }, 50);
+                                }}
+                            >
+                                Clear
+                            </Button>
+                        </div>
+                    </form>
+                </Card.Body>
+            </Card>
 
             {uploadQueue.length > 0 && (
                 <Card className="mb-4 bg-dark text-white border-secondary">

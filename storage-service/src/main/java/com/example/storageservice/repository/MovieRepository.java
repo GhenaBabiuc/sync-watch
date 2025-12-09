@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     @Query("SELECT m FROM Movie m WHERE " +
+            "(:title IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
             "(:year IS NULL OR m.year = :year) " +
             "ORDER BY m.createdAt DESC")
     Page<Movie> findMoviesWithFilters(@Param("title") String title,

@@ -17,15 +17,22 @@ const Dashboard = ({user}) => {
     const [showModal, setShowModal] = useState(false);
     const [modalContent, setModalContent] = useState(null);
     const [modalContentType, setModalContentType] = useState(null);
+    const [searchParams, setSearchParams] = useState({title: '', year: ''});
 
     const navigate = useNavigate();
     const backgroundUrl = '/images/main-background.jpeg';
 
     const fetchMovies = async (page = 0) => {
         try {
-            const res = await axios.get(`${STORAGE_API_URL}/movies`, {
-                params: {page, size: PAGE_SIZE}
-            });
+            const params = {
+                page,
+                size: PAGE_SIZE,
+                ...(searchParams.title && {title: searchParams.title}),
+                ...(searchParams.year && {year: searchParams.year})
+            };
+
+            const res = await axios.get(`${STORAGE_API_URL}/movies`, {params});
+
             setMoviesData({
                 content: res.data.content,
                 totalPages: res.data.totalPages,
@@ -40,9 +47,15 @@ const Dashboard = ({user}) => {
 
     const fetchSeries = async (page = 0) => {
         try {
-            const res = await axios.get(`${STORAGE_API_URL}/series`, {
-                params: {page, size: PAGE_SIZE}
-            });
+            const params = {
+                page,
+                size: PAGE_SIZE,
+                ...(searchParams.title && {title: searchParams.title}),
+                ...(searchParams.year && {year: searchParams.year})
+            };
+
+            const res = await axios.get(`${STORAGE_API_URL}/series`, {params});
+
             setSeriesData({
                 content: res.data.content,
                 totalPages: res.data.totalPages,
@@ -62,6 +75,12 @@ const Dashboard = ({user}) => {
     const onSeriesPageChange = (page) => {
         fetchSeries(page);
         window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        fetchMovies(0);
+        fetchSeries(0);
     };
 
     useEffect(() => {
@@ -163,6 +182,45 @@ const Dashboard = ({user}) => {
                             Available Content
                         </h2>
 
+                        <form onSubmit={handleSearch}
+                              className="d-flex gap-2 mb-4 glass-panel p-3 rounded align-items-center">
+                            <div className="flex-grow-1">
+                                <input
+                                    type="text"
+                                    className="form-control bg-dark text-white border-secondary"
+                                    placeholder="Search by title..."
+                                    value={searchParams.title}
+                                    onChange={(e) => setSearchParams({...searchParams, title: e.target.value})}
+                                />
+                            </div>
+                            <div style={{maxWidth: '120px'}}>
+                                <input
+                                    type="number"
+                                    className="form-control bg-dark text-white border-secondary"
+                                    placeholder="Year"
+                                    value={searchParams.year}
+                                    onChange={(e) => setSearchParams({...searchParams, year: e.target.value})}
+                                />
+                            </div>
+                            <Button type="submit" variant="primary">
+                                <i className="fas fa-search"></i>
+                            </Button>
+                            {(searchParams.title || searchParams.year) && (
+                                <Button
+                                    variant="outline-secondary"
+                                    onClick={() => {
+                                        setSearchParams({title: '', year: ''});
+                                        setTimeout(() => {
+                                            fetchMovies(0);
+                                            fetchSeries(0);
+                                        }, 50);
+                                    }}
+                                >
+                                    Clear
+                                </Button>
+                            )}
+                        </form>
+
                         {error && <Alert variant="danger">{error}</Alert>}
 
                         <Tabs defaultActiveKey="movies" id="contentTabs" className="mb-4">
@@ -170,8 +228,8 @@ const Dashboard = ({user}) => {
                                  title={<><i className="fas fa-film me-2"></i>Movies ({moviesData.totalElements})</>}>
                                 <div className="row g-4 mt-1">
                                     {moviesData.content.length === 0 &&
-                                        <Alert variant="dark" className="border-0 bg-opacity-50">No movies available
-                                            yet.</Alert>}
+                                        <Alert variant="dark" className="border-0 bg-opacity-50">No movies
+                                            available.</Alert>}
                                     {moviesData.content.map(movie => (
                                         <div key={movie.id} className="col-md-6 col-lg-4">
                                             <Card className="content-card"
@@ -240,8 +298,8 @@ const Dashboard = ({user}) => {
                                  title={<><i className="fas fa-tv me-2"></i>Series ({seriesData.totalElements})</>}>
                                 <div className="row g-4 mt-1">
                                     {seriesData.content.length === 0 &&
-                                        <Alert variant="dark" className="border-0 bg-opacity-50">No series available
-                                            yet.</Alert>}
+                                        <Alert variant="dark" className="border-0 bg-opacity-50">No series
+                                            available.</Alert>}
                                     {seriesData.content.map(s => (
                                         <div key={s.id} className="col-md-6 col-lg-4">
                                             <Card className="content-card" onClick={() => openCreateModal(s, 'SERIES')}>
