@@ -2,10 +2,12 @@ package com.example.storageservice.service;
 
 import com.example.storageservice.exception.MovieNotFoundException;
 import com.example.storageservice.model.Movie;
+import com.example.storageservice.model.QMovie;
 import com.example.storageservice.model.dto.CreateMovieRequest;
 import com.example.storageservice.model.dto.MovieDto;
 import com.example.storageservice.model.dto.UpdateMovieRequest;
 import com.example.storageservice.repository.MovieRepository;
+import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -28,12 +31,7 @@ public class MovieService {
 
     @Transactional(readOnly = true)
     public Page<MovieDto> getAllMovies(int page, int size, String title, Integer year) {
-        log.debug("Getting all movies - page: {}, size: {}, title filter: {}, year filter: {}", page, size, title, year);
-
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Movie> movies = movieRepository.findMoviesWithFilters(title, year, pageable);
-
-        return movies.map(movie -> modelMapper.map(movie, MovieDto.class));
+        return searchMovies(title, year, null, null, page, size);
     }
 
     @Transactional(readOnly = true)
@@ -90,8 +88,30 @@ public class MovieService {
 
     @Transactional(readOnly = true)
     public Page<MovieDto> searchMovies(String title, Integer year, Integer minDuration, Integer maxDuration, int page, int size) {
+        log.debug("Searching movies - title: {}, year: {}", title, year);
+
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Movie> movies = movieRepository.findMoviesWithFilters(title, year, pageable);
+
+        QMovie qMovie = QMovie.movie;
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if (StringUtils.hasText(title)) {
+            builder.and(qMovie.title.containsIgnoreCase(title));
+        }
+
+        if (year != null) {
+            builder.and(qMovie.year.eq(year));
+        }
+
+        if (minDuration != null) {
+            builder.and(qMovie.duration.goe(minDuration));
+        }
+
+        if (maxDuration != null) {
+            builder.and(qMovie.duration.loe(maxDuration));
+        }
+
+        Page<Movie> movies = movieRepository.findAll(builder, pageable);
 
         return movies.map(movie -> modelMapper.map(movie, MovieDto.class));
     }

@@ -3,6 +3,7 @@ package com.example.storageservice.service;
 import com.example.storageservice.exception.SeriesNotFoundException;
 import com.example.storageservice.model.Episode;
 import com.example.storageservice.model.EpisodeMedia;
+import com.example.storageservice.model.QSeries;
 import com.example.storageservice.model.Season;
 import com.example.storageservice.model.SeasonMedia;
 import com.example.storageservice.model.Series;
@@ -22,6 +23,7 @@ import com.example.storageservice.repository.SeasonRepository;
 import com.example.storageservice.repository.SeasonsMediaRepository;
 import com.example.storageservice.repository.SeriesMediaRepository;
 import com.example.storageservice.repository.SeriesRepository;
+import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -31,6 +33,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -50,11 +53,7 @@ public class SeriesService {
 
     @Transactional(readOnly = true)
     public Page<SeriesDto> getAllSeries(int page, int size, String title, Integer year) {
-        log.debug("Getting all series - page: {}, size: {}, title: {}, year: {}", page, size, title, year);
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Series> series = seriesRepository.findSeriesWithFilters(title, year, pageable);
-
-        return series.map(s -> modelMapper.map(s, SeriesDto.class));
+        return searchSeries(title, year, null, null, page, size);
     }
 
     @Transactional(readOnly = true)
@@ -222,10 +221,23 @@ public class SeriesService {
 
     public Page<SeriesDto> searchSeries(String title, Integer year, Integer minSeasons, Integer maxSeasons, int page, int size) {
         log.debug("Searching series - title: {}, year: {}, minSeasons: {}, maxSeasons: {}", title, year, minSeasons, maxSeasons);
+
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        return seriesRepository.findSeriesWithFilters(title, year, pageable)
-                .map(s -> modelMapper.map(s, SeriesDto.class));
+        QSeries qSeries = QSeries.series;
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if (StringUtils.hasText(title)) {
+            builder.and(qSeries.title.containsIgnoreCase(title));
+        }
+
+        if (year != null) {
+            builder.and(qSeries.year.eq(year));
+        }
+
+        Page<Series> series = seriesRepository.findAll(builder, pageable);
+
+        return series.map(s -> modelMapper.map(s, SeriesDto.class));
     }
 
     public long getSeriesCount() {
