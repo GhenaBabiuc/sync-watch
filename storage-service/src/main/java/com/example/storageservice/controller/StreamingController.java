@@ -56,6 +56,18 @@ public class StreamingController {
         return streamingService.getSeriesCover(seriesId);
     }
 
+    @GetMapping("/movies/{movieId}/backdrop")
+    public ResponseEntity<InputStreamResource> getMovieBackdrop(@PathVariable Long movieId) {
+        log.info("Getting backdrop for movie ID: {}", movieId);
+        return streamingService.getMovieBackdrop(movieId);
+    }
+
+    @GetMapping("/series/{seriesId}/backdrop")
+    public ResponseEntity<InputStreamResource> getSeriesBackdrop(@PathVariable Long seriesId) {
+        log.info("Getting backdrop for series ID: {}", seriesId);
+        return streamingService.getSeriesBackdrop(seriesId);
+    }
+
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {

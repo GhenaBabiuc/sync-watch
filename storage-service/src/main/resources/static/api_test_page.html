@@ -437,7 +437,7 @@
         document.getElementById(id).classList.add('active');
     }
 
-    function renderMovieStatus(hasVideo, hasPoster) {
+    function renderMovieStatus(hasVideo, hasPoster, hasBackdrop) {
         return `
             <div style="text-align:center; display:flex; flex-direction:column;">
                 <span class="status-badge ${hasVideo ? 'status-ok' : 'status-missing-important'}">
@@ -445,6 +445,9 @@
                 </span>
                 <span class="status-badge ${hasPoster ? 'status-ok' : 'status-missing'}">
                     ${hasPoster ? '✅ Cover OK' : '⚪ No Cover'}
+                </span>
+                <span class="status-badge ${hasBackdrop ? 'status-ok' : 'status-missing'}">
+                    ${hasBackdrop ? '✅ Back OK' : '⚪ No Back'}
                 </span>
             </div>
         `;
@@ -463,11 +466,14 @@
         `;
     }
 
-    function renderSeriesStatus(hasPoster) {
+    function renderSeriesStatus(hasPoster, hasBackdrop) {
         return `
             <div style="text-align:center; display:flex; flex-direction:column; justify-content:center; height:100%;">
                 <span class="status-badge ${hasPoster ? 'status-ok' : 'status-missing'}">
                     ${hasPoster ? '✅ Cover OK' : '⚪ No Cover'}
+                </span>
+                <span class="status-badge ${hasBackdrop ? 'status-ok' : 'status-missing'}">
+                    ${hasBackdrop ? '✅ Back OK' : '⚪ No Back'}
                 </span>
             </div>
         `;
@@ -485,6 +491,7 @@
             data.content.forEach(m => {
                 const hasVideo = m.mediaFiles.some(f => f.category === 'VIDEO' && f.uploadStatus === 'COMPLETED');
                 const hasPoster = m.mediaFiles.some(f => f.category === 'POSTER' && f.uploadStatus === 'COMPLETED');
+                const hasBackdrop = m.mediaFiles.some(f => f.category === 'BACKDROP' && f.uploadStatus === 'COMPLETED');
 
                 const html = `
                     <div class="entity-item">
@@ -508,7 +515,7 @@
                             <div style="font-size:0.8rem; color:#718096;">Drop File</div>
                         </div>
 
-                        ${renderMovieStatus(hasVideo, hasPoster)}
+                        ${renderMovieStatus(hasVideo, hasPoster, hasBackdrop)}
 
                         <div style="display:flex; gap:5px; justify-content:flex-end;">
                             <button class="btn btn-sm btn-outline" onclick='openModal("MOVIE", ${JSON.stringify(m).replace(/'/g, "&#39;")})'>Edit</button>
@@ -533,6 +540,7 @@
 
             data.content.forEach(s => {
                 const hasPoster = s.mediaFiles && s.mediaFiles.some(f => f.category === 'POSTER' && f.uploadStatus === 'COMPLETED');
+                const hasBackdrop = s.mediaFiles && s.mediaFiles.some(f => f.category === 'BACKDROP' && f.uploadStatus === 'COMPLETED');
 
                 const html = `
                     <div class="entity-item" style="background:#f8fafc; border-left: 4px solid var(--secondary);">
@@ -557,7 +565,7 @@
                             <div style="font-size:0.8rem; color:#718096;">Drop File</div>
                         </div>
 
-                        ${renderSeriesStatus(hasPoster)}
+                        ${renderSeriesStatus(hasPoster, hasBackdrop)}
 
                         <div style="display:flex; gap:5px; justify-content:flex-end;">
                             <button class="btn btn-sm btn-outline" onclick='openModal("SERIES", ${JSON.stringify(s).replace(/'/g, "&#39;")})'>Edit</button>
@@ -980,7 +988,6 @@
                     entityId: task.entityId,
                     entityType: task.type,
                     category: task.category,
-                    // If category is POSTER (Cover/Thumb), assume primary for simplicity in this demo
                     isPrimary: task.category === 'POSTER'
                 })
             });

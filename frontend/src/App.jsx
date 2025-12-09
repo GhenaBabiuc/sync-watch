@@ -37,7 +37,7 @@ function App() {
 
     return (
         <BrowserRouter>
-            <div className="bg-dark text-white min-vh-100 d-flex flex-column">
+            <div className="text-white min-vh-100 d-flex flex-column">
                 <NavBar user={user}/>
 
                 <Routes>

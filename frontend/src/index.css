@@ -1,7 +1,7 @@
 :root {
     --bg-color: #0f172a;
-    --sidebar-bg: #1e293b;
-    --card-bg: rgba(30, 41, 59, 0.7);
+    --sidebar-bg: rgba(30, 41, 59, 0.75);
+    --card-bg: rgba(30, 41, 59, 0.6);
     --accent-color: #6366f1;
     --accent-hover: #4f46e5;
     --text-primary: #f8fafc;
@@ -16,9 +16,9 @@ body {
 }
 
 .navbar {
-    background: rgba(15, 23, 42, 0.9) !important;
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .navbar-brand {
@@ -53,6 +53,7 @@ body {
 
 .content-card {
     background: var(--sidebar-bg);
+    backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     overflow: hidden;
@@ -92,6 +93,7 @@ body {
 
 .room-card {
     background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+    backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-left: 4px solid var(--accent-color);
     border-radius: 8px;
@@ -100,7 +102,8 @@ body {
 }
 
 .modal-content {
-    background-color: var(--sidebar-bg);
+    background-color: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(15px);
     color: var(--text-primary);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -110,13 +113,13 @@ body {
 }
 
 .form-control, .form-select {
-    background-color: #0f172a !important;
-    border: 1px solid #334155 !important;
+    background-color: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: #fff !important;
 }
 
 .form-control:focus, .form-select:focus {
-    background-color: #0f172a !important;
+    background-color: rgba(15, 23, 42, 0.9) !important;
     border-color: var(--accent-color) !important;
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
     color: #fff !important;
@@ -127,11 +130,19 @@ body {
 }
 
 .room-container {
-    background-color: var(--bg-color);
+    background-color: transparent;
+}
+
+.glass-panel {
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-col {
     background: var(--sidebar-bg);
+    backdrop-filter: blur(12px);
     border-left: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
@@ -141,6 +152,19 @@ body {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.sidebar-scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
 }
 
 .episode-item {
@@ -154,11 +178,11 @@ body {
 }
 
 .episode-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .episode-item.active {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), transparent);
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.2), transparent);
     border-left-color: var(--accent-color);
 }
 

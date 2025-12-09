@@ -28,12 +28,14 @@ const Room = ({user}) => {
     const [isHost, setIsHost] = useState(false);
     const [streamUrl, setStreamUrl] = useState(null);
     const [coverUrl, setCoverUrl] = useState(null);
+    const [backdropUrl, setBackdropUrl] = useState(null);
     const [currentEpisode, setCurrentEpisode] = useState(null);
     const [availableSeasons, setAvailableSeasons] = useState([]);
     const [episodesBySeason, setEpisodesBySeason] = useState({});
     const [currentSeasonId, setCurrentSeasonId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
     useEffect(() => {
         let client;
 
@@ -42,16 +44,19 @@ const Room = ({user}) => {
                 const roomRes = await axios.get(`${SYNC_API_URL}/rooms/${roomId}`);
                 const initialRoom = roomRes.data;
                 setRoom(initialRoom);
+
                 const hostRes = await axios.get(`${SYNC_API_URL}/user/${user.id}/isHost/${roomId}`);
                 setIsHost(hostRes.data);
 
                 if (initialRoom.roomType === 'MOVIE') {
                     setStreamUrl(`${STORAGE_API_URL}/stream/movies/${initialRoom.contentId}`);
                     setCoverUrl(`${STORAGE_API_URL}/stream/movies/${initialRoom.contentId}/cover`);
+                    setBackdropUrl(`${STORAGE_API_URL}/stream/movies/${initialRoom.contentId}/backdrop`);
 
                 } else if (initialRoom.roomType === 'SERIES') {
                     const seriesId = initialRoom.contentId;
                     setCoverUrl(`${STORAGE_API_URL}/stream/series/${seriesId}/cover`);
+                    setBackdropUrl(`${STORAGE_API_URL}/stream/series/${seriesId}/backdrop`);
 
                     const seasonsRes = await axios.get(`${STORAGE_API_URL}/series/${seriesId}/seasons?size=100`);
                     const seasons = seasonsRes.data.content || seasonsRes.data || [];
@@ -247,15 +252,11 @@ const Room = ({user}) => {
         }
 
         const currentSeasonIndex = availableSeasons.findIndex(s => s.id === currentSeasonId);
-
         if (currentSeasonIndex !== -1 && currentSeasonIndex < availableSeasons.length - 1) {
             const nextSeason = availableSeasons[currentSeasonIndex + 1];
-
             try {
                 const nextSeasonEpisodes = await loadEpisodesForSeason(nextSeason.id);
-
                 if (nextSeasonEpisodes && nextSeasonEpisodes.length > 0) {
-
                     const firstEp = nextSeasonEpisodes[0];
                     switchToEpisode(firstEp);
                 } else {
@@ -278,13 +279,10 @@ const Room = ({user}) => {
         }
 
         const currentSeasonIndex = availableSeasons.findIndex(s => s.id === currentSeasonId);
-
         if (currentSeasonIndex > 0) {
             const prevSeason = availableSeasons[currentSeasonIndex - 1];
-
             try {
                 const prevSeasonEpisodes = await loadEpisodesForSeason(prevSeason.id);
-
                 if (prevSeasonEpisodes && prevSeasonEpisodes.length > 0) {
                     const lastEp = prevSeasonEpisodes[prevSeasonEpisodes.length - 1];
                     switchToEpisode(lastEp);
@@ -317,8 +315,20 @@ const Room = ({user}) => {
         : room.contentTitle;
 
     return (
-        <Container fluid className="vh-100 p-0">
-            <Row className="room-container flex-grow-1 h-100 mx-0">
+        <Container
+            fluid
+            className="vh-100 p-0"
+            style={{
+                backgroundImage: backdropUrl
+                    ? `linear-gradient(rgba(15, 23, 42, 0.50), rgba(15, 23, 42, 0.70)), url(${backdropUrl})`
+                    : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center top',
+                backgroundAttachment: 'fixed',
+                transition: 'background-image 0.5s ease-in-out'
+            }}
+        >
+            <Row className="room-container flex-grow-1 h-100 mx-0" style={{background: 'transparent'}}>
                 <Col md={9} className="main-content p-0 d-flex flex-column" style={{overflowY: 'auto'}}>
                     <div className="container-fluid px-0 pt-3" style={{maxWidth: '1200px', margin: '0 auto'}}>
                         <SyncPlayer
@@ -331,7 +341,7 @@ const Room = ({user}) => {
                             setCurrentEpisode={setCurrentEpisode}
                         />
                         <Card
-                            className="content-info bg-dark my-4 border border-secondary border-opacity-25 text-white shadow-lg">
+                            className="content-info glass-panel my-4 text-white shadow-lg border-0">
                             <Card.Body className="p-4">
                                 <Row className="align-items-center">
                                     {/* Cover Image */}
@@ -419,48 +429,63 @@ const Room = ({user}) => {
                         )}
 
                         {room.roomType === 'SERIES' && (
-                            <div className="p-3 flex-grow-1 d-flex flex-column" style={{minHeight: 0}}>
+                            <div className="p-3 d-flex flex-column">
                                 <h6 className="text-uppercase text-secondary small fw-bold mb-3">Episodes</h6>
-                                <div className="season-tabs d-flex overflow-auto pb-2 mb-2 gap-2">
-                                    {availableSeasons.map(season => (
-                                        <Button
-                                            key={season.id}
-                                            variant={currentSeasonId === season.id ? 'primary' : 'outline-secondary'}
-                                            size="sm"
-                                            className="season-tab"
-                                            onClick={() => switchToSeason(season.id)}
-                                        >
-                                            Season {season.seasonNumber}
-                                        </Button>
-                                    ))}
-                                </div>
-                                <div className="sidebar-scrollable">
-                                    <ListGroup variant="flush" className="episode-list">
-                                        {currentSeasonEpisodes.map(episode => (
-                                            <ListGroup.Item
-                                                key={episode.id}
-                                                action
-                                                onClick={() => isHost ? switchToEpisode(episode) : null}
-                                                className={`episode-item border-0 ${currentEpisode?.id === episode.id ? 'active' : ''}`}
-                                                style={{cursor: isHost ? 'pointer' : 'default'}}
-                                            >
-                                                <div className="d-flex justify-content-between align-items-center">
-                                                    <div>
+
+                                {availableSeasons.length === 0 ? (
+                                    <div className="text-center text-secondary my-4">
+                                        <small>No seasons loaded</small>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="season-tabs d-flex overflow-auto pb-2 mb-2 gap-2">
+                                            {availableSeasons.map(season => (
+                                                <Button
+                                                    key={season.id}
+                                                    variant={currentSeasonId === season.id ? 'primary' : 'outline-secondary'}
+                                                    size="sm"
+                                                    className="season-tab text-nowrap"
+                                                    onClick={() => switchToSeason(season.id)}
+                                                >
+                                                    Season {season.seasonNumber}
+                                                </Button>
+                                            ))}
+                                        </div>
+
+                                        <div className="sidebar-scrollable" style={{maxHeight: '400px'}}>
+                                            <ListGroup variant="flush" className="episode-list">
+                                                {currentSeasonEpisodes.map(episode => (
+                                                    <ListGroup.Item
+                                                        key={episode.id}
+                                                        action
+                                                        onClick={() => isHost ? switchToEpisode(episode) : null}
+                                                        className={`episode-item border-0 ${currentEpisode?.id === episode.id ? 'active' : ''}`}
+                                                        style={{cursor: isHost ? 'pointer' : 'default'}}
+                                                    >
                                                         <div
-                                                            className="episode-number">Episode {episode.episodeNumber}</div>
-                                                        <div className="episode-title text-truncate"
-                                                             style={{maxWidth: '200px'}}>
-                                                            {episode.title || 'Untitled'}
+                                                            className="d-flex justify-content-between align-items-center">
+                                                            <div className="overflow-hidden">
+                                                                <div
+                                                                    className="episode-number">Episode {episode.episodeNumber}</div>
+                                                                <div className="episode-title text-truncate">
+                                                                    {episode.title || 'Untitled'}
+                                                                </div>
+                                                            </div>
+                                                            <small className="text-muted ms-2"
+                                                                   style={{fontSize: '11px', whiteSpace: 'nowrap'}}>
+                                                                {formatTime(episode.duration)}
+                                                            </small>
                                                         </div>
-                                                    </div>
-                                                    <small className="text-muted" style={{fontSize: '11px'}}>
-                                                        {formatTime(episode.duration)}
-                                                    </small>
-                                                </div>
-                                            </ListGroup.Item>
-                                        ))}
-                                    </ListGroup>
-                                </div>
+                                                    </ListGroup.Item>
+                                                ))}
+                                                {currentSeasonEpisodes.length === 0 && (
+                                                    <div className="text-center text-muted small mt-3">No episodes
+                                                        found</div>
+                                                )}
+                                            </ListGroup>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -470,7 +495,8 @@ const Room = ({user}) => {
                             </h6>
                             <div className="sidebar-scrollable" style={{maxHeight: '200px'}}>
                                 {allUsers.map(u => (
-                                    <Card key={u.id} className="user-item mb-2 bg-dark text-white border-0">
+                                    <Card key={u.id} className="user-item mb-2 text-white border-0"
+                                          style={{background: 'rgba(0,0,0,0.3)'}}>
                                         <Card.Body className="p-2 d-flex align-items-center w-100">
                                             <div className="user-avatar me-2">{u.username.charAt(0).toUpperCase()}</div>
                                             <div className="flex-grow-1 overflow-hidden">

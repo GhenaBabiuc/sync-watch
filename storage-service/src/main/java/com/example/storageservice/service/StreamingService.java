@@ -181,4 +181,24 @@ public class StreamingService {
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .body(new InputStreamResource(inputStream));
     }
+
+    @SneakyThrows
+    @Transactional(readOnly = true)
+    public ResponseEntity<InputStreamResource> getMovieBackdrop(Long movieId) {
+        Optional<MediaFile> fileOpt = moviesMediaRepository.findByMovieIdAndCategoryAndIsPrimaryTrue(movieId, MediaCategory.BACKDROP)
+                .or(() -> moviesMediaRepository.findByMovieIdAndCategory(movieId, MediaCategory.BACKDROP))
+                .map(MovieMedia::getMediaFile);
+
+        return serveStaticFile(fileOpt);
+    }
+
+    @SneakyThrows
+    @Transactional(readOnly = true)
+    public ResponseEntity<InputStreamResource> getSeriesBackdrop(Long seriesId) {
+        Optional<MediaFile> fileOpt = seriesMediaRepository.findBySeriesIdAndCategoryAndIsPrimaryTrue(seriesId, MediaCategory.BACKDROP)
+                .or(() -> seriesMediaRepository.findBySeriesIdAndCategory(seriesId, MediaCategory.BACKDROP))
+                .map(SeriesMedia::getMediaFile);
+
+        return serveStaticFile(fileOpt);
+    }
 }
