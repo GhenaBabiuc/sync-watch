@@ -349,10 +349,10 @@ const Room = ({user}) => {
                                         <div className="position-relative"
                                              style={{aspectRatio: '2/3', overflow: 'hidden', borderRadius: '8px'}}>
                                             <img
-                                                src={coverUrl || '/images/default-cover.jpg'}
+                                                src={coverUrl || '/images/default-cover.png'}
                                                 className="w-100 h-100 object-fit-cover"
                                                 alt="Cover"
-                                                onError={(e) => e.target.src = '/images/default-cover.jpg'}
+                                                onError={(e) => e.target.src = '/images/default-cover.png'}
                                             />
                                         </div>
                                     </Col>
