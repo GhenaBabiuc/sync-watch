@@ -128,7 +128,7 @@ const Dashboard = ({user}) => {
         } else if (type === 'SERIES') {
             return `${STORAGE_API_URL}/stream/series/${content.id}/cover`;
         }
-        return '/images/default-cover.jpg';
+        return '/images/default-cover.png';
     };
 
     const openCreateModal = (content, type) => {
@@ -240,7 +240,7 @@ const Dashboard = ({user}) => {
                                                         className="content-image"
                                                         alt={movie.title}
                                                         onError={(e) => {
-                                                            e.target.src = '/images/default-movie-cover.jpg';
+                                                            e.target.src = '/images/default-cover.png';
                                                         }}
                                                     />
                                                     <Badge pill bg="dark" className="content-type-badge text-white">
@@ -309,7 +309,7 @@ const Dashboard = ({user}) => {
                                                         className="content-image"
                                                         alt={s.title}
                                                         onError={(e) => {
-                                                            e.target.src = '/images/default-series-cover.jpg';
+                                                            e.target.src = '/images/default-series-cover.png';
                                                         }}
                                                     />
                                                     <Badge pill bg="success" className="content-type-badge text-white"
