@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static com.example.storageservice.model.EntityType.EPISODE;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -228,6 +230,19 @@ public class FileUploadService {
         String extension = "";
         if (request.getOriginalFilename() != null && request.getOriginalFilename().contains(".")) {
             extension = request.getOriginalFilename().substring(request.getOriginalFilename().lastIndexOf("."));
+        }
+
+        if (request.getEntityType() == EPISODE) {
+            Episode episode = episodeRepository.findById(request.getEntityId())
+                    .orElseThrow(() -> new IllegalArgumentException("Episode not found: " + request.getEntityId()));
+
+            Long seriesId = episode.getSeason().getSeries().getId();
+
+            return String.format("seriess/%d/%s/%s%s",
+                    seriesId,
+                    request.getCategory().name().toLowerCase(),
+                    UUID.randomUUID(),
+                    extension);
         }
 
         return String.format("%ss/%d/%s/%s%s",
